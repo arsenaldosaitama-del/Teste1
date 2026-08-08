@@ -100,6 +100,7 @@ local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, is
     frame.BackgroundTransparency = 1
     frame.Parent = parent
     
+    -- Label
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(0, 30, 0, 14)
     label.Position = UDim2.new(0, 0, 0, 0)
@@ -111,6 +112,7 @@ local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, is
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
     
+    -- Slider
     local sliderFrame = Instance.new("Frame")
     sliderFrame.Size = UDim2.new(0, 135, 0, 3)
     sliderFrame.Position = UDim2.new(0, 34 + (offsetX or 0), 0, 10)
@@ -119,6 +121,7 @@ local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, is
     sliderFrame.BorderColor3 = Color3.fromRGB(200, 0, 0)
     sliderFrame.Parent = frame
     
+    -- Fill
     local fill = Instance.new("Frame")
     local currentVal = settings[settingKey]
     local percent = (currentVal - minVal) / (maxVal - minVal)
@@ -127,6 +130,7 @@ local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, is
     fill.BorderSizePixel = 0
     fill.Parent = sliderFrame
     
+    -- Valor
     local valueLabel = Instance.new("TextLabel")
     valueLabel.Size = UDim2.new(0, 35, 0, 14)
     valueLabel.Position = UDim2.new(0, 173 + (offsetX or 0), 0, 0)
@@ -138,6 +142,7 @@ local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, is
     valueLabel.TextXAlignment = Enum.TextXAlignment.Left
     valueLabel.Parent = frame
     
+    -- Drag button
     local dragButton = Instance.new("TextButton")
     dragButton.Size = UDim2.new(0, 135, 0, 16)
     dragButton.Position = UDim2.new(0, 34 + (offsetX or 0), 0, 2)
@@ -319,8 +324,9 @@ function criarMenu()
     criarToggle("ESP Box", 68, "ESPBox")
     criarToggle("ESP Line", 90, "ESPLine")
     
-    createSlider(content, 114, "FOV", 10, 300, "FOV", false, 0)
-    createSlider(content, 144, "Smooth", 0.1, 1.0, "Smooth", true, 5)
+    -- FOV: offset -5 (mais pra esquerda) | Smooth: offset +12 (mais pra direita)
+    createSlider(content, 114, "FOV", 10, 300, "FOV", false, -5)
+    createSlider(content, 144, "Smooth", 0.1, 1.0, "Smooth", true, 12)
     
     print("✅ MENU CRIADO COM SUCESSO!")
 end
