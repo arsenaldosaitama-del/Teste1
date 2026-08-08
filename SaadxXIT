@@ -91,16 +91,15 @@ local function makeDraggable(frame, dragBar)
 end
 
 -- ============================================
--- FUNÇÃO PARA CRIAR SLIDER (AJUSTADO)
+-- FUNÇÃO PARA CRIAR SLIDER
 -- ============================================
-local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, isFloat)
+local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, isFloat, offsetX)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 28)
     frame.Position = UDim2.new(0, 0, 0, y)
     frame.BackgroundTransparency = 1
     frame.Parent = parent
     
-    -- Label (esquerda)
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(0, 30, 0, 14)
     label.Position = UDim2.new(0, 0, 0, 0)
@@ -112,16 +111,14 @@ local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, is
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
     
-    -- Slider (meio, mais pra esquerda)
     local sliderFrame = Instance.new("Frame")
     sliderFrame.Size = UDim2.new(0, 135, 0, 3)
-    sliderFrame.Position = UDim2.new(0, 34, 0, 10)
+    sliderFrame.Position = UDim2.new(0, 34 + (offsetX or 0), 0, 10)
     sliderFrame.BackgroundColor3 = Color3.fromRGB(60, 0, 0)
     sliderFrame.BorderSizePixel = 1
     sliderFrame.BorderColor3 = Color3.fromRGB(200, 0, 0)
     sliderFrame.Parent = frame
     
-    -- Fill
     local fill = Instance.new("Frame")
     local currentVal = settings[settingKey]
     local percent = (currentVal - minVal) / (maxVal - minVal)
@@ -130,10 +127,9 @@ local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, is
     fill.BorderSizePixel = 0
     fill.Parent = sliderFrame
     
-    -- Valor (direita)
     local valueLabel = Instance.new("TextLabel")
     valueLabel.Size = UDim2.new(0, 35, 0, 14)
-    valueLabel.Position = UDim2.new(0, 173, 0, 0)
+    valueLabel.Position = UDim2.new(0, 173 + (offsetX or 0), 0, 0)
     valueLabel.BackgroundTransparency = 1
     valueLabel.Text = isFloat and string.format("%.1f", currentVal) or tostring(currentVal)
     valueLabel.TextColor3 = Color3.fromRGB(255, 200, 200)
@@ -142,10 +138,9 @@ local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, is
     valueLabel.TextXAlignment = Enum.TextXAlignment.Left
     valueLabel.Parent = frame
     
-    -- Drag button (invisível sobre o slider)
     local dragButton = Instance.new("TextButton")
     dragButton.Size = UDim2.new(0, 135, 0, 16)
-    dragButton.Position = UDim2.new(0, 34, 0, 2)
+    dragButton.Position = UDim2.new(0, 34 + (offsetX or 0), 0, 2)
     dragButton.BackgroundTransparency = 1
     dragButton.Text = ""
     dragButton.Parent = frame
@@ -324,9 +319,8 @@ function criarMenu()
     criarToggle("ESP Box", 68, "ESPBox")
     criarToggle("ESP Line", 90, "ESPLine")
     
-    -- SLIDERS AJUSTADOS
-    createSlider(content, 114, "FOV", 10, 300, "FOV", false)
-    createSlider(content, 144, "Smooth", 0.1, 1.0, "Smooth", true)
+    createSlider(content, 114, "FOV", 10, 300, "FOV", false, 0)
+    createSlider(content, 144, "Smooth", 0.1, 1.0, "Smooth", true, 5)
     
     print("✅ MENU CRIADO COM SUCESSO!")
 end
