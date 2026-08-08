@@ -1,8 +1,6 @@
---[[
-    Saadx XIT - Aimbot Script for Sintonia RP
-    Theme: Red
-    Features: Aimbot, FOV Circle, Wall Check, ESP Box 2D, ESP Line
-]]
+-- ============================================
+-- SAADX XIT | discord.gg/GSWQ3PzTHj
+-- ============================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -10,35 +8,441 @@ local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
--- Configurações
+-- ============================================
+-- 🔑 SISTEMA DE KEY
+-- ============================================
+
+local KeysValidas = {
+    ["SAADX-90862MRHH9ZVP7N8"] = "03/08/2026",
+    ["SAADX-72MMNHXRM4TJSAVY"] = "09/08/2026",
+    ["SAADX-BM7NFX9A4BG563UB"] = "01/09/2026",
+}
+
+local keyValidada = false
+
+local function verificarKey(key)
+    local expira = KeysValidas[key]
+    if not expira then return false, "❌ KEY INVÁLIDA!" end
+    
+    local dia, mes, ano = expira:match("(%d+)/(%d+)/(%d+)")
+    if dia and mes and ano then
+        dia, mes, ano = tonumber(dia), tonumber(mes), tonumber(ano)
+        local t = os.date("*t")
+        if not (ano > t.year or (ano == t.year and mes > t.month) or (ano == t.year and mes == t.month and dia >= t.day)) then
+            return false, "❌ KEY EXPIRADA! (Expirou em " .. expira .. ")"
+        end
+    end
+    return true, "✅ KEY VÁLIDA! Bem-vindo ao Saadx XIT!"
+end
+
+-- ============================================
+-- CONFIGURAÇÕES
+-- ============================================
 local settings = {
     Aimbot = false,
     FOVCircle = false,
     WallCheck = false,
     ESPBox = false,
     ESPLine = false,
-    FOV = 150,
-    Smooth = 0.2
+    FOV = 80,
+    Smooth = 0.6
 }
 
--- Variáveis da GUI
-local screenGui
-local mainFrame
-local isDragging = false
-local dragInput
-local dragStart
-local startPos
-local isMinimized = false
-
--- Variáveis do ESP Box
+-- ============================================
+-- VARIÁVEIS
+-- ============================================
+local screenGui = nil
+local mainFrame = nil
 local espBoxes = {}
-local espBoxEnabled = false
-
--- Variáveis do ESP Line
 local espLines = {}
-local espLineEnabled = false
+local fovCircle = nil
+local menuAberto = false
 
--- ==================== ESP BOX ====================
+-- ============================================
+-- FUNÇÃO PARA ARRASTAR MENU
+-- ============================================
+local function makeDraggable(frame, dragBar)
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+    
+    dragBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    dragBar.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
+
+-- ============================================
+-- FUNÇÃO PARA CRIAR SLIDER (AJUSTADO)
+-- ============================================
+local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, isFloat)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 28)
+    frame.Position = UDim2.new(0, 0, 0, y)
+    frame.BackgroundTransparency = 1
+    frame.Parent = parent
+    
+    -- Label (esquerda)
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0, 30, 0, 14)
+    label.Position = UDim2.new(0, 0, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = labelText .. ":"
+    label.TextColor3 = Color3.fromRGB(255, 200, 200)
+    label.TextSize = 11
+    label.Font = Enum.Font.Gotham
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+    
+    -- Slider (meio, mais pra esquerda)
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Size = UDim2.new(0, 135, 0, 3)
+    sliderFrame.Position = UDim2.new(0, 34, 0, 10)
+    sliderFrame.BackgroundColor3 = Color3.fromRGB(60, 0, 0)
+    sliderFrame.BorderSizePixel = 1
+    sliderFrame.BorderColor3 = Color3.fromRGB(200, 0, 0)
+    sliderFrame.Parent = frame
+    
+    -- Fill
+    local fill = Instance.new("Frame")
+    local currentVal = settings[settingKey]
+    local percent = (currentVal - minVal) / (maxVal - minVal)
+    fill.Size = UDim2.new(percent, 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    fill.BorderSizePixel = 0
+    fill.Parent = sliderFrame
+    
+    -- Valor (direita)
+    local valueLabel = Instance.new("TextLabel")
+    valueLabel.Size = UDim2.new(0, 35, 0, 14)
+    valueLabel.Position = UDim2.new(0, 173, 0, 0)
+    valueLabel.BackgroundTransparency = 1
+    valueLabel.Text = isFloat and string.format("%.1f", currentVal) or tostring(currentVal)
+    valueLabel.TextColor3 = Color3.fromRGB(255, 200, 200)
+    valueLabel.TextSize = 11
+    valueLabel.Font = Enum.Font.Gotham
+    valueLabel.TextXAlignment = Enum.TextXAlignment.Left
+    valueLabel.Parent = frame
+    
+    -- Drag button (invisível sobre o slider)
+    local dragButton = Instance.new("TextButton")
+    dragButton.Size = UDim2.new(0, 135, 0, 16)
+    dragButton.Position = UDim2.new(0, 34, 0, 2)
+    dragButton.BackgroundTransparency = 1
+    dragButton.Text = ""
+    dragButton.Parent = frame
+    
+    local dragging = false
+    local startMousePos = nil
+    local startValue = nil
+    
+    dragButton.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            startMousePos = input.Position.X
+            startValue = settings[settingKey]
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    dragButton.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local deltaX = input.Position.X - startMousePos
+            local sliderWidth = sliderFrame.AbsoluteSize.X
+            local deltaPercent = deltaX / sliderWidth
+            local newValue = startValue + (deltaPercent * (maxVal - minVal))
+            newValue = math.clamp(newValue, minVal, maxVal)
+            
+            if isFloat then
+                newValue = math.round(newValue * 10) / 10
+            else
+                newValue = math.round(newValue)
+            end
+            
+            settings[settingKey] = newValue
+            
+            local newPercent = (newValue - minVal) / (maxVal - minVal)
+            fill.Size = UDim2.new(newPercent, 0, 1, 0)
+            
+            valueLabel.Text = isFloat and string.format("%.1f", newValue) or tostring(newValue)
+            
+            if settingKey == "FOV" and fovCircle then
+                fovCircle.Radius = newValue
+            end
+        end
+    end)
+    
+    return frame
+end
+
+-- ============================================
+-- FUNÇÃO PARA CRIAR O MENU
+-- ============================================
+function criarMenu()
+    if menuAberto then return end
+    menuAberto = true
+    
+    print("🔄 CRIANDO MENU PRINCIPAL...")
+    
+    screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "SaadxXIT"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = LocalPlayer.PlayerGui
+    
+    mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 235, 0, 270)
+    mainFrame.Position = UDim2.new(0.5, -117, 0.5, -135)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(15, 0, 0)
+    mainFrame.BackgroundTransparency = 0.05
+    mainFrame.BorderSizePixel = 2
+    mainFrame.BorderColor3 = Color3.fromRGB(255, 0, 0)
+    mainFrame.Parent = screenGui
+    
+    local tituloBar = Instance.new("Frame")
+    tituloBar.Size = UDim2.new(1, 0, 0, 26)
+    tituloBar.BackgroundColor3 = Color3.fromRGB(40, 0, 0)
+    tituloBar.BorderSizePixel = 0
+    tituloBar.Parent = mainFrame
+    
+    makeDraggable(mainFrame, tituloBar)
+    
+    local tituloText = Instance.new("TextLabel")
+    tituloText.Size = UDim2.new(1, -45, 1, 0)
+    tituloText.Position = UDim2.new(0, 4, 0, 0)
+    tituloText.BackgroundTransparency = 1
+    tituloText.Text = "Saadx XIT | discord.gg/GSWQ3PzTHj"
+    tituloText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    tituloText.TextSize = 10
+    tituloText.Font = Enum.Font.GothamBold
+    tituloText.TextXAlignment = Enum.TextXAlignment.Left
+    tituloText.Parent = tituloBar
+    
+    local btnFechar = Instance.new("TextButton")
+    btnFechar.Size = UDim2.new(0, 16, 0, 16)
+    btnFechar.Position = UDim2.new(1, -18, 0, 5)
+    btnFechar.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    btnFechar.Text = "X"
+    btnFechar.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnFechar.TextSize = 10
+    btnFechar.Font = Enum.Font.GothamBold
+    btnFechar.BorderSizePixel = 0
+    btnFechar.Parent = tituloBar
+    btnFechar.MouseButton1Click:Connect(function()
+        if screenGui then screenGui:Destroy() end
+        menuAberto = false
+    end)
+    
+    local btnMinimizar = Instance.new("TextButton")
+    btnMinimizar.Size = UDim2.new(0, 16, 0, 16)
+    btnMinimizar.Position = UDim2.new(1, -36, 0, 5)
+    btnMinimizar.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    btnMinimizar.Text = "-"
+    btnMinimizar.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnMinimizar.TextSize = 10
+    btnMinimizar.Font = Enum.Font.GothamBold
+    btnMinimizar.BorderSizePixel = 0
+    btnMinimizar.Parent = tituloBar
+    
+    local minimizado = false
+    btnMinimizar.MouseButton1Click:Connect(function()
+        minimizado = not minimizado
+        for _, child in ipairs(mainFrame:GetChildren()) do
+            if child ~= tituloBar then
+                child.Visible = not minimizado
+            end
+        end
+        mainFrame.Size = minimizado and UDim2.new(0, 235, 0, 26) or UDim2.new(0, 235, 0, 270)
+    end)
+    
+    local content = Instance.new("Frame")
+    content.Size = UDim2.new(1, -8, 1, -36)
+    content.Position = UDim2.new(0, 4, 0, 30)
+    content.BackgroundTransparency = 1
+    content.Parent = mainFrame
+    
+    local function criarToggle(text, y, settingKey)
+        local linha = Instance.new("Frame")
+        linha.Size = UDim2.new(1, 0, 0, 22)
+        linha.Position = UDim2.new(0, 0, 0, y)
+        linha.BackgroundTransparency = 1
+        linha.Parent = content
+        
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(0.5, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.TextColor3 = Color3.fromRGB(255, 200, 200)
+        label.TextSize = 10
+        label.Font = Enum.Font.Gotham
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Parent = linha
+        
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0, 35, 0, 14)
+        btn.Position = UDim2.new(0.78, 0, 0, 4)
+        btn.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
+        btn.BorderSizePixel = 1
+        btn.BorderColor3 = Color3.fromRGB(200, 0, 0)
+        btn.Text = "OFF"
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.TextSize = 9
+        btn.Font = Enum.Font.GothamBold
+        btn.Parent = linha
+        
+        btn.MouseButton1Click:Connect(function()
+            settings[settingKey] = not settings[settingKey]
+            btn.BackgroundColor3 = settings[settingKey] and Color3.fromRGB(80, 0, 0) or Color3.fromRGB(50, 0, 0)
+            btn.Text = settings[settingKey] and "ON" or "OFF"
+        end)
+    end
+    
+    criarToggle("Aimbot", 2, "Aimbot")
+    criarToggle("FOV Circle", 24, "FOVCircle")
+    criarToggle("Wall Check", 46, "WallCheck")
+    criarToggle("ESP Box", 68, "ESPBox")
+    criarToggle("ESP Line", 90, "ESPLine")
+    
+    -- SLIDERS AJUSTADOS
+    createSlider(content, 114, "FOV", 10, 300, "FOV", false)
+    createSlider(content, 144, "Smooth", 0.1, 1.0, "Smooth", true)
+    
+    print("✅ MENU CRIADO COM SUCESSO!")
+end
+
+-- ============================================
+-- TELA DE KEY
+-- ============================================
+local function criarTelaKey()
+    local keyGui = Instance.new("ScreenGui")
+    keyGui.Name = "KeyScreen"
+    keyGui.ResetOnSpawn = false
+    keyGui.Parent = LocalPlayer.PlayerGui
+
+    local bg = Instance.new("Frame")
+    bg.Size = UDim2.new(1, 0, 1, 0)
+    bg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    bg.BackgroundTransparency = 0.7
+    bg.Parent = keyGui
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 320, 0, 220)
+    frame.Position = UDim2.new(0.5, -160, 0.5, -110)
+    frame.BackgroundColor3 = Color3.fromRGB(20, 0, 0)
+    frame.BackgroundTransparency = 0.1
+    frame.BorderSizePixel = 3
+    frame.BorderColor3 = Color3.fromRGB(255, 0, 0)
+    frame.Parent = bg
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = frame
+
+    local titulo = Instance.new("TextLabel")
+    titulo.Size = UDim2.new(1, 0, 0, 40)
+    titulo.Position = UDim2.new(0, 0, 0, 8)
+    titulo.BackgroundTransparency = 1
+    titulo.Text = "🔐 SAADX XIT"
+    titulo.TextColor3 = Color3.fromRGB(255, 0, 0)
+    titulo.TextSize = 24
+    titulo.Font = Enum.Font.GothamBold
+    titulo.TextScaled = true
+    titulo.Parent = frame
+
+    local sub = Instance.new("TextLabel")
+    sub.Size = UDim2.new(1, 0, 0, 20)
+    sub.Position = UDim2.new(0, 0, 0, 48)
+    sub.BackgroundTransparency = 1
+    sub.Text = "Digite sua KEY"
+    sub.TextColor3 = Color3.fromRGB(255, 255, 255)
+    sub.TextSize = 12
+    sub.Font = Enum.Font.Gotham
+    sub.Parent = frame
+
+    local input = Instance.new("TextBox")
+    input.Size = UDim2.new(0.8, 0, 0, 35)
+    input.Position = UDim2.new(0.1, 0, 0, 78)
+    input.BackgroundColor3 = Color3.fromRGB(10, 0, 0)
+    input.Text = ""
+    input.TextColor3 = Color3.fromRGB(255, 255, 255)
+    input.TextSize = 16
+    input.Font = Enum.Font.GothamBold
+    input.PlaceholderText = "KEY aqui..."
+    input.PlaceholderColor3 = Color3.fromRGB(150, 0, 0)
+    input.BorderSizePixel = 2
+    input.BorderColor3 = Color3.fromRGB(255, 0, 0)
+    input.ClearTextOnFocus = true
+    input.Parent = frame
+
+    local status = Instance.new("TextLabel")
+    status.Size = UDim2.new(1, 0, 0, 25)
+    status.Position = UDim2.new(0, 0, 0, 120)
+    status.BackgroundTransparency = 1
+    status.Text = ""
+    status.TextColor3 = Color3.fromRGB(255, 255, 255)
+    status.TextSize = 12
+    status.Font = Enum.Font.Gotham
+    status.Parent = frame
+
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.35, 0, 0, 32)
+    btn.Position = UDim2.new(0.325, 0, 0, 155)
+    btn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    btn.Text = "✓ VERIFICAR"
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 14
+    btn.Font = Enum.Font.GothamBold
+    btn.BorderSizePixel = 0
+    btn.Parent = frame
+
+    local function processar()
+        local key = input.Text
+        if key == "" then
+            status.Text = "❌ Digite uma KEY!"
+            status.TextColor3 = Color3.fromRGB(255, 200, 0)
+            return
+        end
+        local valida, msg = verificarKey(key)
+        status.Text = msg
+        status.TextColor3 = valida and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+        if valida then
+            keyValidada = true
+            print("✅ KEY VALIDADA! Abrindo menu...")
+            task.wait(0.5)
+            keyGui:Destroy()
+            criarMenu()
+        end
+    end
+
+    btn.MouseButton1Click:Connect(processar)
+    btn.TouchTap:Connect(processar)
+    input.FocusLost:Connect(function(enter) if enter then processar() end end)
+end
+
+-- ============================================
+-- ESP BOX
+-- ============================================
 local function createESPBox(player)
     if espBoxes[player] then return end
     
@@ -48,6 +452,7 @@ local function createESPBox(player)
     box.Thickness = 1.5
     box.Filled = false
     box.Transparency = 1
+    box.ZIndex = 5
     
     local outline = Drawing.new("Square")
     outline.Visible = false
@@ -55,12 +460,12 @@ local function createESPBox(player)
     outline.Thickness = 3
     outline.Filled = false
     outline.Transparency = 1
+    outline.ZIndex = 4
     
     espBoxes[player] = {
         box = box,
         outline = outline,
-        character = nil,
-        valid = false
+        character = nil
     }
 end
 
@@ -72,7 +477,6 @@ local function updateESPBox(player)
     if not character then
         espData.box.Visible = false
         espData.outline.Visible = false
-        espData.valid = false
         return
     end
     
@@ -80,35 +484,32 @@ local function updateESPBox(player)
     if not humanoid or humanoid.Health <= 0 then
         espData.box.Visible = false
         espData.outline.Visible = false
-        espData.valid = false
         return
     end
     
     local head = character:FindFirstChild("Head")
-    local torso = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso")
+    local rootPart = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso")
     
-    if not head or not torso then
+    if not head or not rootPart then
         espData.box.Visible = false
         espData.outline.Visible = false
-        espData.valid = false
         return
     end
     
     local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position)
-    local torsoPos, torsoOnScreen = Camera:WorldToViewportPoint(torso.Position)
+    local rootPos, rootOnScreen = Camera:WorldToViewportPoint(rootPart.Position)
     
-    if not headOnScreen or not torsoOnScreen then
+    if not headOnScreen or not rootOnScreen then
         espData.box.Visible = false
         espData.outline.Visible = false
-        espData.valid = false
         return
     end
     
-    local height = math.abs(headPos.Y - torsoPos.Y) * 2.5
+    local height = math.abs(headPos.Y - rootPos.Y) * 2.5
     local width = height * 0.5
     
-    local centerX = headPos.X
-    local centerY = (headPos.Y + torsoPos.Y) / 2
+    local centerX = (headPos.X + rootPos.X) / 2
+    local centerY = (headPos.Y + rootPos.Y) / 2
     
     local x1 = centerX - width / 2
     local y1 = centerY - height / 2
@@ -119,7 +520,6 @@ local function updateESPBox(player)
     if x2 < 0 or x1 > viewportSize.X or y2 < 0 or y1 > viewportSize.Y then
         espData.box.Visible = false
         espData.outline.Visible = false
-        espData.valid = false
         return
     end
     
@@ -131,7 +531,6 @@ local function updateESPBox(player)
     espData.outline.Position = Vector2.new(x1 - 1, y1 - 1)
     espData.outline.Visible = true
     
-    espData.valid = true
     espData.character = character
 end
 
@@ -157,7 +556,9 @@ local function clearAllESPBoxes()
     espBoxes = {}
 end
 
--- ==================== ESP LINE ====================
+-- ============================================
+-- ESP LINE
+-- ============================================
 local function createESPLine(player)
     if espLines[player] then return end
     
@@ -166,11 +567,11 @@ local function createESPLine(player)
     line.Color = Color3.fromRGB(255, 0, 0)
     line.Thickness = 1.5
     line.Transparency = 1
+    line.ZIndex = 3
     
     espLines[player] = {
         line = line,
-        character = nil,
-        valid = false
+        character = nil
     }
 end
 
@@ -181,21 +582,18 @@ local function updateESPLine(player)
     local character = player.Character
     if not character then
         espData.line.Visible = false
-        espData.valid = false
         return
     end
     
     local humanoid = character:FindFirstChild("Humanoid")
     if not humanoid or humanoid.Health <= 0 then
         espData.line.Visible = false
-        espData.valid = false
         return
     end
     
     local targetPart = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Head")
     if not targetPart then
         espData.line.Visible = false
-        espData.valid = false
         return
     end
     
@@ -203,19 +601,16 @@ local function updateESPLine(player)
     
     if not onScreen then
         espData.line.Visible = false
-        espData.valid = false
         return
     end
     
-    -- Ponto central inferior da tela
     local viewportSize = Camera.ViewportSize
     local bottomCenter = Vector2.new(viewportSize.X / 2, viewportSize.Y)
     
-    -- Atualizar linha
     espData.line.From = bottomCenter
     espData.line.To = Vector2.new(targetPos.X, targetPos.Y)
     espData.line.Visible = true
-    espData.valid = true
+    
     espData.character = character
 end
 
@@ -237,505 +632,143 @@ local function clearAllESPLines()
     espLines = {}
 end
 
--- ==================== GERENCIADOR ESP ====================
+-- ============================================
+-- GERENCIADOR DE ESP
+-- ============================================
 local function setupESPForPlayer(player)
     if player == LocalPlayer then return end
+    if not keyValidada then return end
     
-    -- Box
     if settings.ESPBox then
         removeESPBox(player)
         createESPBox(player)
     end
     
-    -- Line
     if settings.ESPLine then
         removeESPLine(player)
         createESPLine(player)
     end
 end
 
-local function setupAllPlayersESP()
+local function updateAllESP()
+    if not keyValidada then return end
+    
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
-            setupESPForPlayer(player)
-        end
-    end
-end
-
-local function toggleESPBox()
-    espBoxEnabled = settings.ESPBox
-    
-    if espBoxEnabled then
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer then
-                removeESPBox(player)
+            local hasBox = espBoxes[player] ~= nil
+            local hasLine = espLines[player] ~= nil
+            
+            if settings.ESPBox and not hasBox then
                 createESPBox(player)
             end
-        end
-    else
-        clearAllESPBoxes()
-    end
-end
-
-local function toggleESPLine()
-    espLineEnabled = settings.ESPLine
-    
-    if espLineEnabled then
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer then
-                removeESPLine(player)
+            
+            if settings.ESPLine and not hasLine then
                 createESPLine(player)
             end
-        end
-    else
-        clearAllESPLines()
-    end
-end
-
-local function updateAllESP()
-    -- Atualizar Boxes
-    if settings.ESPBox then
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and not espBoxes[player] then
-                createESPBox(player)
-            end
-        end
-        
-        for player, _ in pairs(espBoxes) do
-            if not player or not player.Parent then
+            
+            if not settings.ESPBox and hasBox then
                 removeESPBox(player)
             end
-        end
-        
-        for player, _ in pairs(espBoxes) do
-            updateESPBox(player)
-        end
-    else
-        for _, espData in pairs(espBoxes) do
-            espData.box.Visible = false
-            espData.outline.Visible = false
+            
+            if not settings.ESPLine and hasLine then
+                removeESPLine(player)
+            end
+            
+            if settings.ESPBox and espBoxes[player] then
+                updateESPBox(player)
+            end
+            
+            if settings.ESPLine and espLines[player] then
+                updateESPLine(player)
+            end
         end
     end
     
-    -- Atualizar Lines
-    if settings.ESPLine then
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and not espLines[player] then
-                createESPLine(player)
-            end
+    local playersToRemove = {}
+    for player, _ in pairs(espBoxes) do
+        if not player or not player.Parent then
+            table.insert(playersToRemove, player)
         end
-        
-        for player, _ in pairs(espLines) do
-            if not player or not player.Parent then
-                removeESPLine(player)
-            end
+    end
+    for _, player in pairs(playersToRemove) do
+        removeESPBox(player)
+    end
+    
+    playersToRemove = {}
+    for player, _ in pairs(espLines) do
+        if not player or not player.Parent then
+            table.insert(playersToRemove, player)
         end
-        
-        for player, _ in pairs(espLines) do
-            updateESPLine(player)
-        end
-    else
-        for _, espData in pairs(espLines) do
-            espData.line.Visible = false
-        end
+    end
+    for _, player in pairs(playersToRemove) do
+        removeESPLine(player)
     end
 end
 
--- ==================== AIMBOT ====================
+-- ============================================
+-- AIMBOT
+-- ============================================
 local function getClosestPlayer()
-    local closest = nil
-    local shortestDistance = math.huge
-    local mousePos = UserInputService:GetMouseLocation()
+    if not keyValidada then return nil end
     
-    local playersList = {}
+    local mousePos = UserInputService:GetMouseLocation()
+    local closest = nil
+    local shortest = settings.FOV
+    
     for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
-            local head = player.Character:FindFirstChild("Head")
-            if head then
-                local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
-                if onScreen then
-                    local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-                    if distance < settings.FOV then
-                        table.insert(playersList, {
-                            player = player,
-                            distance = distance,
-                            head = head
-                        })
+        if player ~= LocalPlayer and player.Character then
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            if humanoid and humanoid.Health > 0 then
+                local head = player.Character:FindFirstChild("Head")
+                if head then
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                    if onScreen then
+                        local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                        if dist < shortest then
+                            if settings.WallCheck then
+                                local params = RaycastParams.new()
+                                params.FilterType = Enum.RaycastFilterType.Blacklist
+                                params.FilterDescendantsInstances = {LocalPlayer.Character}
+                                local result = workspace:Raycast(
+                                    Camera.CFrame.Position,
+                                    (head.Position - Camera.CFrame.Position).Unit * 1000,
+                                    params
+                                )
+                                if result and result.Instance:IsDescendantOf(player.Character) then
+                                    closest, shortest = player, dist
+                                end
+                            else
+                                closest, shortest = player, dist
+                            end
+                        end
                     end
                 end
             end
         end
     end
-    
-    table.sort(playersList, function(a, b)
-        return a.distance < b.distance
-    end)
-    
-    for _, data in ipairs(playersList) do
-        if settings.WallCheck then
-            local ray = Ray.new(Camera.CFrame.Position, (data.head.Position - Camera.CFrame.Position).unit * 1000)
-            local hit, position = workspace:FindPartOnRay(ray, LocalPlayer.Character)
-            if hit and hit:IsDescendantOf(data.player.Character) then
-                return data.player
-            end
-        else
-            return data.player
-        end
-    end
-    
-    return nil
+    return closest
 end
 
 local function aimbot()
-    if not settings.Aimbot then return end
+    if not settings.Aimbot or not keyValidada then return end
     
     local target = getClosestPlayer()
-    if target and target.Character and target.Character:FindFirstChild("Head") then
-        local head = target.Character.Head
-        local targetPos = head.Position
-        local cameraPos = Camera.CFrame.Position
-        
-        local lookVector = (targetPos - cameraPos).unit
-        local targetCFrame = CFrame.lookAt(cameraPos, cameraPos + lookVector)
-        local currentCFrame = Camera.CFrame
-        
-        local lerpedCFrame = currentCFrame:Lerp(targetCFrame, settings.Smooth)
-        Camera.CFrame = lerpedCFrame
+    if target and target.Character then
+        local head = target.Character:FindFirstChild("Head")
+        if head then
+            local dir = (head.Position - Camera.CFrame.Position).unit
+            Camera.CFrame = Camera.CFrame:Lerp(
+                CFrame.lookAt(Camera.CFrame.Position, Camera.CFrame.Position + dir),
+                settings.Smooth
+            )
+        end
     end
 end
 
--- ==================== CRIAÇÃO DA GUI ====================
-local function createGUI()
-    screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "SaadxXITGui"
-    screenGui.Parent = LocalPlayer.PlayerGui
-    screenGui.ResetOnSpawn = false
-    
-    -- Janela principal
-    mainFrame = Instance.new("Frame")
-    mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 260, 0, 290)
-    mainFrame.Position = UDim2.new(0.5, -130, 0.5, -145)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(25, 0, 0)
-    mainFrame.BackgroundTransparency = 0.05
-    mainFrame.BorderSizePixel = 2
-    mainFrame.BorderColor3 = Color3.fromRGB(200, 0, 0)
-    mainFrame.Parent = screenGui
-    
-    -- Barra de título
-    local titleBar = Instance.new("Frame")
-    titleBar.Name = "TitleBar"
-    titleBar.Size = UDim2.new(1, 0, 0, 24)
-    titleBar.BackgroundColor3 = Color3.fromRGB(40, 0, 0)
-    titleBar.BorderSizePixel = 0
-    titleBar.Parent = mainFrame
-    
-    -- Título com Discord
-    local title = Instance.new("TextLabel")
-    title.Name = "Title"
-    title.Size = UDim2.new(1, -55, 1, 0)
-    title.Position = UDim2.new(0, 5, 0, 0)
-    title.BackgroundTransparency = 1
-    title.Text = "Saadx XIT | discord.gg/GSWQ3PzTHj"
-    title.TextColor3 = Color3.fromRGB(255, 0, 0)
-    title.TextSize = 9
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Font = Enum.Font.GothamBold
-    title.Parent = titleBar
-    
-    -- Botão Minimizar
-    local minimizeBtn = Instance.new("TextButton")
-    minimizeBtn.Name = "MinimizeBtn"
-    minimizeBtn.Size = UDim2.new(0, 18, 1, 0)
-    minimizeBtn.Position = UDim2.new(1, -42, 0, 0)
-    minimizeBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    minimizeBtn.BorderSizePixel = 0
-    minimizeBtn.Text = "-"
-    minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    minimizeBtn.TextSize = 11
-    minimizeBtn.Font = Enum.Font.GothamBold
-    minimizeBtn.Parent = titleBar
-    
-    -- Botão Fechar
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Name = "CloseBtn"
-    closeBtn.Size = UDim2.new(0, 18, 1, 0)
-    closeBtn.Position = UDim2.new(1, -22, 0, 0)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    closeBtn.BorderSizePixel = 0
-    closeBtn.Text = "X"
-    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeBtn.TextSize = 11
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.Parent = titleBar
-    
-    -- Frame de conteúdo
-    local contentFrame = Instance.new("Frame")
-    contentFrame.Name = "ContentFrame"
-    contentFrame.Size = UDim2.new(1, -14, 1, -36)
-    contentFrame.Position = UDim2.new(0, 7, 0, 30)
-    contentFrame.BackgroundTransparency = 1
-    contentFrame.Parent = mainFrame
-    
-    -- Função para criar botões de toggle
-    local function createToggle(parent, text, yPos, settingKey)
-        local toggleFrame = Instance.new("Frame")
-        toggleFrame.Name = text .. "Frame"
-        toggleFrame.Size = UDim2.new(1, 0, 0, 24)
-        toggleFrame.Position = UDim2.new(0, 0, 0, yPos)
-        toggleFrame.BackgroundTransparency = 1
-        toggleFrame.Parent = parent
-        
-        local label = Instance.new("TextLabel")
-        label.Name = "Label"
-        label.Size = UDim2.new(0.5, 0, 1, 0)
-        label.Position = UDim2.new(0, 0, 0, 0)
-        label.BackgroundTransparency = 1
-        label.Text = text
-        label.TextColor3 = Color3.fromRGB(255, 180, 180)
-        label.TextSize = 12
-        label.TextXAlignment = Enum.TextXAlignment.Left
-        label.Font = Enum.Font.Gotham
-        label.Parent = toggleFrame
-        
-        local toggleBtn = Instance.new("TextButton")
-        toggleBtn.Name = "ToggleBtn"
-        toggleBtn.Size = UDim2.new(0, 50, 1, -4)
-        toggleBtn.Position = UDim2.new(0.78, 0, 0, 2)
-        toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
-        toggleBtn.BorderSizePixel = 1
-        toggleBtn.BorderColor3 = Color3.fromRGB(200, 0, 0)
-        toggleBtn.Text = "OFF"
-        toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        toggleBtn.TextSize = 11
-        toggleBtn.Font = Enum.Font.GothamBold
-        toggleBtn.Parent = toggleFrame
-        
-        toggleBtn.MouseButton1Click:Connect(function()
-            settings[settingKey] = not settings[settingKey]
-            toggleBtn.Text = settings[settingKey] and "ON" or "OFF"
-            toggleBtn.BackgroundColor3 = settings[settingKey] and Color3.fromRGB(80, 0, 0) or Color3.fromRGB(50, 0, 0)
-            
-            if settingKey == "ESPBox" then
-                toggleESPBox()
-            elseif settingKey == "ESPLine" then
-                toggleESPLine()
-            end
-        end)
-        
-        return toggleBtn
-    end
-    
-    -- Criar toggles (Aumentado para 5 itens)
-    createToggle(contentFrame, "Aimbot", 2, "Aimbot")
-    createToggle(contentFrame, "FOV Circle", 26, "FOVCircle")
-    createToggle(contentFrame, "Wall Check", 50, "WallCheck")
-    createToggle(contentFrame, "ESP Box", 74, "ESPBox")
-    createToggle(contentFrame, "ESP Line", 98, "ESPLine")
-    
-    -- Slider FOV
-    local fovSliderFrame = Instance.new("Frame")
-    fovSliderFrame.Name = "FOVSliderFrame"
-    fovSliderFrame.Size = UDim2.new(1, 0, 0, 38)
-    fovSliderFrame.Position = UDim2.new(0, 0, 0, 124)
-    fovSliderFrame.BackgroundTransparency = 1
-    fovSliderFrame.Parent = contentFrame
-    
-    -- Label FOV
-    local fovLabel = Instance.new("TextLabel")
-    fovLabel.Name = "FOVLabel"
-    fovLabel.Size = UDim2.new(0, 40, 0, 18)
-    fovLabel.Position = UDim2.new(0, 0, 0, 0)
-    fovLabel.BackgroundTransparency = 1
-    fovLabel.Text = "FOV:"
-    fovLabel.TextColor3 = Color3.fromRGB(255, 180, 180)
-    fovLabel.TextSize = 12
-    fovLabel.TextXAlignment = Enum.TextXAlignment.Left
-    fovLabel.Font = Enum.Font.Gotham
-    fovLabel.Parent = fovSliderFrame
-    
-    -- Barra do Slider FOV
-    local fovSlider = Instance.new("Frame")
-    fovSlider.Name = "FOVSlider"
-    fovSlider.Size = UDim2.new(0, 130, 0, 4)
-    fovSlider.Position = UDim2.new(0, 35, 0, 7)
-    fovSlider.BackgroundColor3 = Color3.fromRGB(60, 0, 0)
-    fovSlider.BorderSizePixel = 1
-    fovSlider.BorderColor3 = Color3.fromRGB(200, 0, 0)
-    fovSlider.Parent = fovSliderFrame
-    
-    local fovFill = Instance.new("Frame")
-    fovFill.Name = "FOVFill"
-    fovFill.Size = UDim2.new(settings.FOV / 500, 0, 1, 0)
-    fovFill.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-    fovFill.BorderSizePixel = 0
-    fovFill.Parent = fovSlider
-    
-    -- Valor FOV
-    local fovValue = Instance.new("TextLabel")
-    fovValue.Name = "FOVValue"
-    fovValue.Size = UDim2.new(0, 40, 0, 18)
-    fovValue.Position = UDim2.new(0, 170, 0, 0)
-    fovValue.BackgroundTransparency = 1
-    fovValue.Text = "150"
-    fovValue.TextColor3 = Color3.fromRGB(255, 180, 180)
-    fovValue.TextSize = 12
-    fovValue.TextXAlignment = Enum.TextXAlignment.Left
-    fovValue.Font = Enum.Font.Gotham
-    fovValue.Parent = fovSliderFrame
-    
-    -- Drag do Slider FOV
-    local isDraggingFOV = false
-    fovSlider.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            isDraggingFOV = true
-        end
-    end)
-    
-    fovSlider.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            isDraggingFOV = false
-        end
-    end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        if isDraggingFOV and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local mousePos = input.Position.X
-            local sliderPos = fovSlider.AbsolutePosition.X
-            local sliderSize = fovSlider.AbsoluteSize.X
-            local newValue = math.clamp((mousePos - sliderPos) / sliderSize, 0, 1)
-            settings.FOV = math.floor(newValue * 500)
-            settings.FOV = math.clamp(settings.FOV, 1, 500)
-            fovFill.Size = UDim2.new(settings.FOV / 500, 0, 1, 0)
-            fovValue.Text = tostring(settings.FOV)
-        end
-    end)
-    
-    -- Slider Smooth
-    local smoothSliderFrame = Instance.new("Frame")
-    smoothSliderFrame.Name = "SmoothSliderFrame"
-    smoothSliderFrame.Size = UDim2.new(1, 0, 0, 38)
-    smoothSliderFrame.Position = UDim2.new(0, 0, 0, 164)
-    smoothSliderFrame.BackgroundTransparency = 1
-    smoothSliderFrame.Parent = contentFrame
-    
-    -- Label Smooth
-    local smoothLabel = Instance.new("TextLabel")
-    smoothLabel.Name = "SmoothLabel"
-    smoothLabel.Size = UDim2.new(0, 55, 0, 18)
-    smoothLabel.Position = UDim2.new(0, 0, 0, 0)
-    smoothLabel.BackgroundTransparency = 1
-    smoothLabel.Text = "Smooth:"
-    smoothLabel.TextColor3 = Color3.fromRGB(255, 180, 180)
-    smoothLabel.TextSize = 12
-    smoothLabel.TextXAlignment = Enum.TextXAlignment.Left
-    smoothLabel.Font = Enum.Font.Gotham
-    smoothLabel.Parent = smoothSliderFrame
-    
-    -- Barra do Slider Smooth
-    local smoothSlider = Instance.new("Frame")
-    smoothSlider.Name = "SmoothSlider"
-    smoothSlider.Size = UDim2.new(0, 130, 0, 4)
-    smoothSlider.Position = UDim2.new(0, 50, 0, 7)
-    smoothSlider.BackgroundColor3 = Color3.fromRGB(60, 0, 0)
-    smoothSlider.BorderSizePixel = 1
-    smoothSlider.BorderColor3 = Color3.fromRGB(200, 0, 0)
-    smoothSlider.Parent = smoothSliderFrame
-    
-    local smoothFill = Instance.new("Frame")
-    smoothFill.Name = "SmoothFill"
-    smoothFill.Size = UDim2.new(settings.Smooth, 0, 1, 0)
-    smoothFill.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-    smoothFill.BorderSizePixel = 0
-    smoothFill.Parent = smoothSlider
-    
-    -- Valor Smooth
-    local smoothValue = Instance.new("TextLabel")
-    smoothValue.Name = "SmoothValue"
-    smoothValue.Size = UDim2.new(0, 40, 0, 18)
-    smoothValue.Position = UDim2.new(0, 185, 0, 0)
-    smoothValue.BackgroundTransparency = 1
-    smoothValue.Text = "0.2"
-    smoothValue.TextColor3 = Color3.fromRGB(255, 180, 180)
-    smoothValue.TextSize = 12
-    smoothValue.TextXAlignment = Enum.TextXAlignment.Left
-    smoothValue.Font = Enum.Font.Gotham
-    smoothValue.Parent = smoothSliderFrame
-    
-    -- Drag do Slider Smooth
-    local isDraggingSmooth = false
-    smoothSlider.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            isDraggingSmooth = true
-        end
-    end)
-    
-    smoothSlider.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            isDraggingSmooth = false
-        end
-    end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        if isDraggingSmooth and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local mousePos = input.Position.X
-            local sliderPos = smoothSlider.AbsolutePosition.X
-            local sliderSize = smoothSlider.AbsoluteSize.X
-            local newValue = math.clamp((mousePos - sliderPos) / sliderSize, 0, 1)
-            settings.Smooth = math.round(newValue * 10) / 10
-            settings.Smooth = math.clamp(settings.Smooth, 0.1, 1)
-            smoothFill.Size = UDim2.new(settings.Smooth, 0, 1, 0)
-            smoothValue.Text = tostring(settings.Smooth)
-        end
-    end)
-    
-    -- Arrastar a janela
-    titleBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            isDragging = true
-            dragStart = input.Position
-            startPos = mainFrame.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    isDragging = false
-                end
-            end)
-        end
-    end)
-    
-    titleBar.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = input
-        end
-    end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and isDragging then
-            local delta = input.Position - dragStart
-            mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-    
-    -- Conexões dos botões
-    minimizeBtn.MouseButton1Click:Connect(function()
-        isMinimized = not isMinimized
-        contentFrame.Visible = not isMinimized
-        mainFrame.Size = isMinimized and UDim2.new(0, 260, 0, 24) or UDim2.new(0, 260, 0, 290)
-        minimizeBtn.Text = isMinimized and "+" or "-"
-    end)
-    
-    closeBtn.MouseButton1Click:Connect(function()
-        clearAllESPBoxes()
-        clearAllESPLines()
-        screenGui:Destroy()
-    end)
-end
-
--- ==================== EXECUÇÃO PRINCIPAL ====================
-
--- Círculo do FOV (centralizado na tela)
-local fovCircle = Drawing.new("Circle")
+-- ============================================
+-- FOV CIRCLE
+-- ============================================
+fovCircle = Drawing.new("Circle")
 fovCircle.Visible = false
 fovCircle.Color = Color3.fromRGB(255, 0, 0)
 fovCircle.Thickness = 1.5
@@ -743,33 +776,18 @@ fovCircle.Filled = false
 fovCircle.NumSides = 50
 fovCircle.Radius = settings.FOV
 fovCircle.Transparency = 0.8
+fovCircle.ZIndex = 2
 
--- Criar GUI
-createGUI()
+-- ============================================
+-- EVENTOS DE JOGADORES
+-- ============================================
 
--- Configurar ESP inicial
-if settings.ESPBox then
-    espBoxEnabled = true
-    setupAllPlayersESP()
-else
-    espBoxEnabled = false
-end
-
-if settings.ESPLine then
-    espLineEnabled = true
-    setupAllPlayersESP()
-else
-    espLineEnabled = false
-end
-
--- Lidar com novos jogadores
 Players.PlayerAdded:Connect(function(player)
     if player ~= LocalPlayer then
         setupESPForPlayer(player)
     end
 end)
 
--- Lidar com remoção de jogadores
 Players.PlayerRemoving:Connect(function(player)
     if player ~= LocalPlayer then
         removeESPBox(player)
@@ -777,10 +795,35 @@ Players.PlayerRemoving:Connect(function(player)
     end
 end)
 
--- Loop principal
+local function onCharacterAdded(player)
+    if player ~= LocalPlayer then
+        removeESPBox(player)
+        removeESPLine(player)
+        setupESPForPlayer(player)
+    end
+end
+
+for _, player in pairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        player.CharacterAdded:Connect(function()
+            onCharacterAdded(player)
+        end)
+    end
+end
+
+Players.PlayerAdded:Connect(function(player)
+    if player ~= LocalPlayer then
+        player.CharacterAdded:Connect(function()
+            onCharacterAdded(player)
+        end)
+    end
+end)
+
+-- ============================================
+-- LOOP PRINCIPAL
+-- ============================================
 RunService.RenderStepped:Connect(function()
-    -- Atualizar círculo do FOV
-    if settings.FOVCircle then
+    if settings.FOVCircle and keyValidada then
         local viewportSize = Camera.ViewportSize
         fovCircle.Position = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
         fovCircle.Radius = settings.FOV
@@ -789,13 +832,24 @@ RunService.RenderStepped:Connect(function()
         fovCircle.Visible = false
     end
     
-    -- Aimbot
     if settings.Aimbot then
         aimbot()
     end
     
-    -- Atualizar ESP
-    updateAllESP()
+    if keyValidada then
+        updateAllESP()
+    end
 end)
 
-print("Saadx XIT Carregado com Sucesso!")
+-- ============================================
+-- EXECUÇÃO PRINCIPAL
+-- ============================================
+
+print("========================================")
+print("🔐 SAADX XIT")
+print("📌 Digite sua KEY para ativar")
+print("========================================")
+
+criarTelaKey()
+
+print("✅ Saadx XIT Carregado com Sucesso!")
