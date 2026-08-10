@@ -13,7 +13,7 @@ local LocalPlayer = Players.LocalPlayer
 -- ============================================
 
 local KeysValidas = {
-    ["SAADX-78WB9UG4KTQWTUX0"] = "17/08/2026",
+    ["SAADX-78WB9UG4KTQWTUX0"] = "09/08/2026",
     ["SAADX-72MMNHXRM4TJSAVY"] = "09/08/2026",
     ["SAADX-BM7NFX9A4BG563UB"] = "01/09/2026",
 }
@@ -45,7 +45,6 @@ local settings = {
     ESPBox = false,
     ESPLine = false,
     FOV = 80,
-    Smooth = 0.6
 }
 
 -- ============================================
@@ -59,39 +58,13 @@ local fovCircle = nil
 local menuAberto = false
 
 -- ============================================
--- FUNÇÃO PARA ARRASTAR MENU
+-- VARIÁVEIS DO AIMBOT (CORRIGIDAS)
 -- ============================================
-local function makeDraggable(frame, dragBar)
-    local dragging = false
-    local dragStart = nil
-    local startPos = nil
-    
-    dragBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-    
-    dragBar.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - dragStart
-            frame.Position = UDim2.new(
-                startPos.X.Scale, startPos.X.Offset + delta.X,
-                startPos.Y.Scale, startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
-end
+local currentTarget = nil
+local targetLocked = false
 
 -- ============================================
--- FUNÇÃO PARA CRIAR SLIDER
+-- FUNÇÃO PARA CRIAR SLIDER (APENAS FOV)
 -- ============================================
 local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, isFloat, offsetX)
     local frame = Instance.new("Frame")
@@ -100,7 +73,6 @@ local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, is
     frame.BackgroundTransparency = 1
     frame.Parent = parent
     
-    -- Label
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(0, 30, 0, 14)
     label.Position = UDim2.new(0, 0, 0, 0)
@@ -112,7 +84,6 @@ local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, is
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
     
-    -- Slider
     local sliderFrame = Instance.new("Frame")
     sliderFrame.Size = UDim2.new(0, 135, 0, 3)
     sliderFrame.Position = UDim2.new(0, 34 + (offsetX or 0), 0, 10)
@@ -121,7 +92,6 @@ local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, is
     sliderFrame.BorderColor3 = Color3.fromRGB(200, 0, 0)
     sliderFrame.Parent = frame
     
-    -- Fill
     local fill = Instance.new("Frame")
     local currentVal = settings[settingKey]
     local percent = (currentVal - minVal) / (maxVal - minVal)
@@ -130,7 +100,6 @@ local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, is
     fill.BorderSizePixel = 0
     fill.Parent = sliderFrame
     
-    -- Valor
     local valueLabel = Instance.new("TextLabel")
     valueLabel.Size = UDim2.new(0, 35, 0, 14)
     valueLabel.Position = UDim2.new(0, 173 + (offsetX or 0), 0, 0)
@@ -142,7 +111,6 @@ local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, is
     valueLabel.TextXAlignment = Enum.TextXAlignment.Left
     valueLabel.Parent = frame
     
-    -- Drag button
     local dragButton = Instance.new("TextButton")
     dragButton.Size = UDim2.new(0, 135, 0, 16)
     dragButton.Position = UDim2.new(0, 34 + (offsetX or 0), 0, 2)
@@ -195,6 +163,50 @@ local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, is
     end)
     
     return frame
+end
+
+-- ============================================
+-- FUNÇÃO PARA ARRASTAR O MENU
+-- ============================================
+local function makeDraggable(frame, dragArea)
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+
+    dragArea.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if not dragging then
+            return
+        end
+
+        if input.UserInputType ~= Enum.UserInputType.MouseMovement
+            and input.UserInputType ~= Enum.UserInputType.Touch then
+            return
+        end
+
+        local delta = input.Position - dragStart
+
+        frame.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end)
 end
 
 -- ============================================
@@ -324,11 +336,10 @@ function criarMenu()
     criarToggle("ESP Box", 68, "ESPBox")
     criarToggle("ESP Line", 90, "ESPLine")
     
-    -- FOV: offset -5 (mais pra esquerda) | Smooth: offset +12 (mais pra direita)
-    createSlider(content, 114, "FOV", 10, 300, "FOV", false, -5)
-    createSlider(content, 144, "Smooth", 0.1, 1.0, "Smooth", true, 12)
+    createSlider(content, 116, "FOV", 10, 300, "FOV", false, -5)
     
     print("✅ MENU CRIADO COM SUCESSO!")
+    print("⚡ Smooth do aimbot: 0.7")
 end
 
 -- ============================================
@@ -435,8 +446,7 @@ local function criarTelaKey()
         end
     end
 
-    btn.MouseButton1Click:Connect(processar)
-    btn.TouchTap:Connect(processar)
+    btn.Activated:Connect(processar)
     input.FocusLost:Connect(function(enter) if enter then processar() end end)
 end
 
@@ -706,14 +716,57 @@ local function updateAllESP()
 end
 
 -- ============================================
--- AIMBOT
+-- AIMBOT (CORRIGIDO)
 -- ============================================
-local function getClosestPlayer()
-    if not keyValidada then return nil end
+
+-- Verifica se o alvo ainda é válido
+local function isTargetValid(target)
+    if not target then return false end
+    if target == LocalPlayer then return false end
     
-    local mousePos = UserInputService:GetMouseLocation()
-    local closest = nil
-    local shortest = settings.FOV
+    local character = target.Character
+    if not character then return false end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not humanoid or humanoid.Health <= 0 then return false end
+    
+    local head = character:FindFirstChild("Head")
+    if not head then return false end
+    
+    -- Verifica se o alvo está dentro do FOV
+    local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+    if not onScreen then return false end
+    
+    local viewportSize = Camera.ViewportSize
+    local centerScreen = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
+    local distance = (Vector2.new(screenPos.X, screenPos.Y) - centerScreen).Magnitude
+    
+    if distance > settings.FOV then return false end
+    
+    -- Verifica Wall Check
+    if settings.WallCheck then
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Blacklist
+        params.FilterDescendantsInstances = {LocalPlayer.Character}
+        local result = workspace:Raycast(
+            Camera.CFrame.Position,
+            (head.Position - Camera.CFrame.Position).Unit * 1000,
+            params
+        )
+        if not result or not result.Instance:IsDescendantOf(character) then
+            return false
+        end
+    end
+    
+    return true
+end
+
+-- Seleciona o melhor alvo baseado no centro da tela
+local function selectBestTarget()
+    local bestTarget = nil
+    local bestDistance = math.huge
+    local viewportSize = Camera.ViewportSize
+    local centerScreen = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
     
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
@@ -723,8 +776,11 @@ local function getClosestPlayer()
                 if head then
                     local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
                     if onScreen then
-                        local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-                        if dist < shortest then
+                        local dist = (Vector2.new(screenPos.X, screenPos.Y) - centerScreen).Magnitude
+                        
+                        if dist < settings.FOV and dist < bestDistance then
+                            -- Verifica Wall Check
+                            local validTarget = true
                             if settings.WallCheck then
                                 local params = RaycastParams.new()
                                 params.FilterType = Enum.RaycastFilterType.Blacklist
@@ -734,11 +790,14 @@ local function getClosestPlayer()
                                     (head.Position - Camera.CFrame.Position).Unit * 1000,
                                     params
                                 )
-                                if result and result.Instance:IsDescendantOf(player.Character) then
-                                    closest, shortest = player, dist
+                                if not result or not result.Instance:IsDescendantOf(player.Character) then
+                                    validTarget = false
                                 end
-                            else
-                                closest, shortest = player, dist
+                            end
+                            
+                            if validTarget then
+                                bestTarget = player
+                                bestDistance = dist
                             end
                         end
                     end
@@ -746,23 +805,46 @@ local function getClosestPlayer()
             end
         end
     end
-    return closest
+    
+    return bestTarget
 end
 
 local function aimbot()
     if not settings.Aimbot or not keyValidada then return end
     
-    local target = getClosestPlayer()
-    if target and target.Character then
-        local head = target.Character:FindFirstChild("Head")
-        if head then
-            local dir = (head.Position - Camera.CFrame.Position).unit
-            Camera.CFrame = Camera.CFrame:Lerp(
-                CFrame.lookAt(Camera.CFrame.Position, Camera.CFrame.Position + dir),
-                settings.Smooth
-            )
+    -- Verifica se o alvo atual ainda é válido
+    if currentTarget and isTargetValid(currentTarget) then
+        -- Mantém o alvo atual
+    else
+        -- Procura um novo alvo
+        currentTarget = selectBestTarget()
+        if not currentTarget then
+            return
         end
     end
+    
+    -- Se chegou aqui, tem um alvo válido
+    local head = currentTarget.Character:FindFirstChild("Head")
+    if not head then
+        currentTarget = nil
+        return
+    end
+    
+    -- Aplica o smooth para mirar no alvo
+    local targetPos = head.Position
+    local cameraPos = Camera.CFrame.Position
+    local direction = (targetPos - cameraPos).unit
+    
+    -- Verifica se a direção é válida
+    if direction.Magnitude < 0.001 then
+        return
+    end
+    
+    local targetCFrame = CFrame.lookAt(cameraPos, cameraPos + direction)
+    local currentCFrame = Camera.CFrame
+    local lerpedCFrame = currentCFrame:Lerp(targetCFrame, 0.7)
+    
+    Camera.CFrame = lerpedCFrame
 end
 
 -- ============================================
@@ -792,30 +874,6 @@ Players.PlayerRemoving:Connect(function(player)
     if player ~= LocalPlayer then
         removeESPBox(player)
         removeESPLine(player)
-    end
-end)
-
-local function onCharacterAdded(player)
-    if player ~= LocalPlayer then
-        removeESPBox(player)
-        removeESPLine(player)
-        setupESPForPlayer(player)
-    end
-end
-
-for _, player in pairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer then
-        player.CharacterAdded:Connect(function()
-            onCharacterAdded(player)
-        end)
-    end
-end
-
-Players.PlayerAdded:Connect(function(player)
-    if player ~= LocalPlayer then
-        player.CharacterAdded:Connect(function()
-            onCharacterAdded(player)
-        end)
     end
 end)
 
@@ -853,3 +911,4 @@ print("========================================")
 criarTelaKey()
 
 print("✅ Saadx XIT Carregado com Sucesso!")
+print("⚡ Smooth do aimbot: 0.7")
