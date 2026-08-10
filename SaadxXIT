@@ -216,8 +216,6 @@ function criarMenu()
     if menuAberto then return end
     menuAberto = true
     
-    print("🔄 CRIANDO MENU PRINCIPAL...")
-    
     screenGui = Instance.new("ScreenGui")
     screenGui.Name = "SaadxXIT"
     screenGui.ResetOnSpawn = false
@@ -337,9 +335,6 @@ function criarMenu()
     criarToggle("ESP Line", 90, "ESPLine")
     
     createSlider(content, 116, "FOV", 10, 300, "FOV", false, -5)
-    
-    print("✅ MENU CRIADO COM SUCESSO!")
-    print("⚡ Smooth do aimbot: 0.7")
 end
 
 -- ============================================
@@ -439,7 +434,6 @@ local function criarTelaKey()
         status.TextColor3 = valida and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
         if valida then
             keyValidada = true
-            print("✅ KEY VALIDADA! Abrindo menu...")
             task.wait(0.5)
             keyGui:Destroy()
             criarMenu()
@@ -842,7 +836,7 @@ local function aimbot()
     
     local targetCFrame = CFrame.lookAt(cameraPos, cameraPos + direction)
     local currentCFrame = Camera.CFrame
-    local lerpedCFrame = currentCFrame:Lerp(targetCFrame, 0.7)
+    local lerpedCFrame = currentCFrame:Lerp(targetCFrame, 0.5)
     
     Camera.CFrame = lerpedCFrame
 end
@@ -903,12 +897,4 @@ end)
 -- EXECUÇÃO PRINCIPAL
 -- ============================================
 
-print("========================================")
-print("🔐 SAADX XIT")
-print("📌 Digite sua KEY para ativar")
-print("========================================")
-
 criarTelaKey()
-
-print("✅ Saadx XIT Carregado com Sucesso!")
-print("⚡ Smooth do aimbot: 0.7")
