@@ -58,7 +58,7 @@ local fovCircle = nil
 local menuAberto = false
 
 -- ============================================
--- VARIÁVEIS DO AIMBOT (CORRIGIDAS)
+-- VARIÁVEIS DO AIMBOT
 -- ============================================
 local currentTarget = nil
 local targetLocked = false
@@ -836,7 +836,7 @@ local function aimbot()
     
     local targetCFrame = CFrame.lookAt(cameraPos, cameraPos + direction)
     local currentCFrame = Camera.CFrame
-    local lerpedCFrame = currentCFrame:Lerp(targetCFrame, 0.5)
+    local lerpedCFrame = currentCFrame:Lerp(targetCFrame, 0.3)
     
     Camera.CFrame = lerpedCFrame
 end
