@@ -15,7 +15,7 @@ local LocalPlayer = Players.LocalPlayer
 local KeysValidas = {
     ["SAADX-78WB9UG4KTQWTUX0"] = "16/08/2026",
     ["SAADX-72MMNHXRM4TJSAVY"] = "17/08/2026",
-    ["SAADX-BM7NFX9A4BG563UB"] = "10/08/2026",
+    ["SAADX-BM7NFX9A4BG563UB"] = "11/09/2026",
 }
 
 local keyValidada = false
@@ -44,6 +44,8 @@ local settings = {
     WallCheck = false,
     ESPBox = false,
     ESPLine = false,
+    ESPName = false,
+    ESPDistance = false,
     FOV = 80,
 }
 
@@ -54,11 +56,13 @@ local screenGui = nil
 local mainFrame = nil
 local espBoxes = {}
 local espLines = {}
+local espNames = {}
+local espDistances = {}
 local fovCircle = nil
 local menuAberto = false
 
 -- ============================================
--- VARIÁVEIS DO AIMBOT
+-- VARIÁVEIS DO AIMBOT (CORRIGIDAS)
 -- ============================================
 local currentTarget = nil
 local targetLocked = false
@@ -222,8 +226,8 @@ function criarMenu()
     screenGui.Parent = LocalPlayer.PlayerGui
     
     mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 235, 0, 270)
-    mainFrame.Position = UDim2.new(0.5, -117, 0.5, -135)
+    mainFrame.Size = UDim2.new(0, 235, 0, 250)
+    mainFrame.Position = UDim2.new(0.5, -117, 0.5, -125)
     mainFrame.BackgroundColor3 = Color3.fromRGB(15, 0, 0)
     mainFrame.BackgroundTransparency = 0.05
     mainFrame.BorderSizePixel = 2
@@ -275,32 +279,56 @@ function criarMenu()
     btnMinimizar.BorderSizePixel = 0
     btnMinimizar.Parent = tituloBar
     
-    local minimizado = false
-    btnMinimizar.MouseButton1Click:Connect(function()
-        minimizado = not minimizado
-        for _, child in ipairs(mainFrame:GetChildren()) do
-            if child ~= tituloBar then
-                child.Visible = not minimizado
-            end
-        end
-        mainFrame.Size = minimizado and UDim2.new(0, 235, 0, 26) or UDim2.new(0, 235, 0, 270)
-    end)
+    local tabs = Instance.new("Frame")
+    tabs.Size = UDim2.new(1, -8, 0, 22)
+    tabs.Position = UDim2.new(0, 4, 0, 30)
+    tabs.BackgroundTransparency = 1
+    tabs.Parent = mainFrame
+    
+    local function criarAba(texto, x)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.5, -2, 1, 0)
+        btn.Position = UDim2.new(x, 0, 0, 0)
+        btn.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
+        btn.BorderSizePixel = 1
+        btn.BorderColor3 = Color3.fromRGB(200, 0, 0)
+        btn.Text = texto
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.TextSize = 10
+        btn.Font = Enum.Font.GothamBold
+        btn.Parent = tabs
+        return btn
+    end
+    
+    local btnPvP = criarAba("PvP", 0)
+    local btnPlayer = criarAba("Player", 0.5)
     
     local content = Instance.new("Frame")
-    content.Size = UDim2.new(1, -8, 1, -36)
-    content.Position = UDim2.new(0, 4, 0, 30)
+    content.Size = UDim2.new(1, -8, 1, -60)
+    content.Position = UDim2.new(0, 4, 0, 56)
     content.BackgroundTransparency = 1
     content.Parent = mainFrame
     
-    local function criarToggle(text, y, settingKey)
+    local pvpContent = Instance.new("Frame")
+    pvpContent.Size = UDim2.new(1, 0, 1, 0)
+    pvpContent.BackgroundTransparency = 1
+    pvpContent.Parent = content
+    
+    local playerContent = Instance.new("Frame")
+    playerContent.Size = UDim2.new(1, 0, 1, 0)
+    playerContent.BackgroundTransparency = 1
+    playerContent.Visible = false
+    playerContent.Parent = content
+    
+    local function criarToggle(parent, text, y, settingKey)
         local linha = Instance.new("Frame")
         linha.Size = UDim2.new(1, 0, 0, 22)
         linha.Position = UDim2.new(0, 0, 0, y)
         linha.BackgroundTransparency = 1
-        linha.Parent = content
+        linha.Parent = parent
         
         local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(0.5, 0, 1, 0)
+        label.Size = UDim2.new(0.65, 0, 1, 0)
         label.BackgroundTransparency = 1
         label.Text = text
         label.TextColor3 = Color3.fromRGB(255, 200, 200)
@@ -315,7 +343,7 @@ function criarMenu()
         btn.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
         btn.BorderSizePixel = 1
         btn.BorderColor3 = Color3.fromRGB(200, 0, 0)
-        btn.Text = "OFF"
+        btn.Text = settings[settingKey] and "ON" or "OFF"
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         btn.TextSize = 9
         btn.Font = Enum.Font.GothamBold
@@ -328,13 +356,45 @@ function criarMenu()
         end)
     end
     
-    criarToggle("Aimbot", 2, "Aimbot")
-    criarToggle("FOV Circle", 24, "FOVCircle")
-    criarToggle("Wall Check", 46, "WallCheck")
-    criarToggle("ESP Box", 68, "ESPBox")
-    criarToggle("ESP Line", 90, "ESPLine")
+    -- ==================== PvP ====================
+    criarToggle(pvpContent, "Aimbot", 2, "Aimbot")
+    criarToggle(pvpContent, "FOV Circle", 24, "FOVCircle")
+    criarToggle(pvpContent, "Wall Check", 46, "WallCheck")
+    createSlider(pvpContent, 74, "FOV", 10, 300, "FOV", false, -5)
     
-    createSlider(content, 116, "FOV", 10, 300, "FOV", false, -5)
+    -- ==================== Player ====================
+    criarToggle(playerContent, "ESP Box", 2, "ESPBox")
+    criarToggle(playerContent, "ESP Line", 24, "ESPLine")
+    criarToggle(playerContent, "ESP Name", 46, "ESPName")
+    criarToggle(playerContent, "ESP Distance", 68, "ESPDistance")
+    
+    local function selecionarAba(pvp)
+        pvpContent.Visible = pvp
+        playerContent.Visible = not pvp
+        btnPvP.BackgroundColor3 = pvp and Color3.fromRGB(80, 0, 0) or Color3.fromRGB(50, 0, 0)
+        btnPlayer.BackgroundColor3 = pvp and Color3.fromRGB(50, 0, 0) or Color3.fromRGB(80, 0, 0)
+    end
+    
+    btnPvP.MouseButton1Click:Connect(function()
+        selecionarAba(true)
+    end)
+    
+    btnPlayer.MouseButton1Click:Connect(function()
+        selecionarAba(false)
+    end)
+    
+    selecionarAba(true)
+    
+    local minimizado = false
+    btnMinimizar.MouseButton1Click:Connect(function()
+        minimizado = not minimizado
+        for _, child in ipairs(mainFrame:GetChildren()) do
+            if child ~= tituloBar then
+                child.Visible = not minimizado
+            end
+        end
+        mainFrame.Size = minimizado and UDim2.new(0, 235, 0, 26) or UDim2.new(0, 235, 0, 250)
+    end)
 end
 
 -- ============================================
@@ -452,7 +512,7 @@ local function createESPBox(player)
     
     local box = Drawing.new("Square")
     box.Visible = false
-    box.Color = Color3.fromRGB(255, 0, 0)
+    box.Color = Color3.fromRGB(255, 255, 255)
     box.Thickness = 1.5
     box.Filled = false
     box.Transparency = 1
@@ -460,7 +520,7 @@ local function createESPBox(player)
     
     local outline = Drawing.new("Square")
     outline.Visible = false
-    outline.Color = Color3.fromRGB(200, 0, 0)
+    outline.Color = Color3.fromRGB(255, 255, 255)
     outline.Thickness = 3
     outline.Filled = false
     outline.Transparency = 1
@@ -568,7 +628,7 @@ local function createESPLine(player)
     
     local line = Drawing.new("Line")
     line.Visible = false
-    line.Color = Color3.fromRGB(255, 0, 0)
+    line.Color = Color3.fromRGB(255, 255, 255)
     line.Thickness = 1.5
     line.Transparency = 1
     line.ZIndex = 3
@@ -654,59 +714,131 @@ local function setupESPForPlayer(player)
     end
 end
 
+-- ============================================
+-- ESP NAME
+-- ============================================
+local function createESPName(player)
+    if espNames[player] then return end
+    local text = Drawing.new("Text")
+    text.Visible = false
+    text.Color = Color3.fromRGB(255, 255, 255)
+    text.Size = 13
+    text.Center = true
+    text.Outline = true
+    text.OutlineColor = Color3.fromRGB(0, 0, 0)
+    text.Font = 2
+    text.ZIndex = 6
+    espNames[player] = {text = text}
+end
+
+local function updateESPName(player)
+    local data = espNames[player]
+    if not data then return end
+    local char = player.Character
+    local head = char and char:FindFirstChild("Head")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not head or not hum or hum.Health <= 0 then data.text.Visible = false return end
+    local pos, onScreen = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.8, 0))
+    if not onScreen then data.text.Visible = false return end
+    data.text.Text = player.Name
+    data.text.Position = Vector2.new(pos.X, pos.Y)
+    data.text.Visible = true
+end
+
+local function removeESPName(player)
+    local data = espNames[player]
+    if data then data.text:Remove(); espNames[player] = nil end
+end
+
+-- ============================================
+-- ESP DISTANCE
+-- ============================================
+local function createESPDistance(player)
+    if espDistances[player] then return end
+    local text = Drawing.new("Text")
+    text.Visible = false
+    text.Color = Color3.fromRGB(255, 255, 255)
+    text.Size = 12
+    text.Center = true
+    text.Outline = true
+    text.OutlineColor = Color3.fromRGB(0, 0, 0)
+    text.Font = 2
+    text.ZIndex = 6
+    espDistances[player] = {text = text}
+end
+
+local function updateESPDistance(player)
+    local data = espDistances[player]
+    if not data then return end
+    local char = player.Character
+    local localChar = LocalPlayer.Character
+    local root = char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso"))
+    local localRoot = localChar and (localChar:FindFirstChild("HumanoidRootPart") or localChar:FindFirstChild("Torso"))
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not root or not localRoot or not hum or hum.Health <= 0 then data.text.Visible = false return end
+    local pos, onScreen = Camera:WorldToViewportPoint(root.Position + Vector3.new(0, -3, 0))
+    if not onScreen then data.text.Visible = false return end
+    local distance = (root.Position - localRoot.Position).Magnitude
+    data.text.Text = string.format("[%dm]", math.floor(distance + 0.5))
+    data.text.Position = Vector2.new(pos.X, pos.Y)
+    data.text.Visible = true
+end
+
+local function removeESPDistance(player)
+    local data = espDistances[player]
+    if data then data.text:Remove(); espDistances[player] = nil end
+end
+
 local function updateAllESP()
     if not keyValidada then return end
-    
+
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             local hasBox = espBoxes[player] ~= nil
             local hasLine = espLines[player] ~= nil
-            
-            if settings.ESPBox and not hasBox then
-                createESPBox(player)
-            end
-            
-            if settings.ESPLine and not hasLine then
-                createESPLine(player)
-            end
-            
-            if not settings.ESPBox and hasBox then
-                removeESPBox(player)
-            end
-            
-            if not settings.ESPLine and hasLine then
-                removeESPLine(player)
-            end
-            
-            if settings.ESPBox and espBoxes[player] then
-                updateESPBox(player)
-            end
-            
-            if settings.ESPLine and espLines[player] then
-                updateESPLine(player)
-            end
+            local hasName = espNames[player] ~= nil
+            local hasDistance = espDistances[player] ~= nil
+
+            if settings.ESPBox and not hasBox then createESPBox(player) end
+            if settings.ESPLine and not hasLine then createESPLine(player) end
+            if settings.ESPName and not hasName then createESPName(player) end
+            if settings.ESPDistance and not hasDistance then createESPDistance(player) end
+
+            if not settings.ESPBox and hasBox then removeESPBox(player) end
+            if not settings.ESPLine and hasLine then removeESPLine(player) end
+            if not settings.ESPName and hasName then removeESPName(player) end
+            if not settings.ESPDistance and hasDistance then removeESPDistance(player) end
+
+            if settings.ESPBox and espBoxes[player] then updateESPBox(player) end
+            if settings.ESPLine and espLines[player] then updateESPLine(player) end
+            if settings.ESPName and espNames[player] then updateESPName(player) end
+            if settings.ESPDistance and espDistances[player] then updateESPDistance(player) end
         end
     end
-    
+
     local playersToRemove = {}
     for player, _ in pairs(espBoxes) do
-        if not player or not player.Parent then
-            table.insert(playersToRemove, player)
-        end
+        if not player or not player.Parent then table.insert(playersToRemove, player) end
     end
-    for _, player in pairs(playersToRemove) do
-        removeESPBox(player)
-    end
-    
+    for _, player in pairs(playersToRemove) do removeESPBox(player) end
+
     playersToRemove = {}
     for player, _ in pairs(espLines) do
-        if not player or not player.Parent then
-            table.insert(playersToRemove, player)
-        end
+        if not player or not player.Parent then table.insert(playersToRemove, player) end
     end
-    for _, player in pairs(playersToRemove) do
-        removeESPLine(player)
+    for _, player in pairs(playersToRemove) do removeESPLine(player) end
+
+    playersToRemove = {}
+    for player, _ in pairs(espNames) do
+        if not player or not player.Parent then table.insert(playersToRemove, player) end
     end
+    for _, player in pairs(playersToRemove) do removeESPName(player) end
+
+    playersToRemove = {}
+    for player, _ in pairs(espDistances) do
+        if not player or not player.Parent then table.insert(playersToRemove, player) end
+    end
+    for _, player in pairs(playersToRemove) do removeESPDistance(player) end
 end
 
 -- ============================================
@@ -868,6 +1000,8 @@ Players.PlayerRemoving:Connect(function(player)
     if player ~= LocalPlayer then
         removeESPBox(player)
         removeESPLine(player)
+        removeESPName(player)
+        removeESPDistance(player)
     end
 end)
 
