@@ -15,7 +15,7 @@ local LocalPlayer = Players.LocalPlayer
 local KeysValidas = {
     ["SAADX-78WB9UG4KTQWTUX0"] = "16/08/2026",
     ["SAADX-72MMNHXRM4TJSAVY"] = "17/08/2026",
-    ["SAADX-BM7NFX9A4BG563UB"] = "11/09/2026",
+    ["SAADX-BM7NFX9A4BG563UB"] = "11/08/2026",
 }
 
 local keyValidada = false
