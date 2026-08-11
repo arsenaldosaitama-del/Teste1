@@ -969,7 +969,7 @@ local function aimbot()
     
     local targetCFrame = CFrame.lookAt(cameraPos, cameraPos + direction)
     local currentCFrame = Camera.CFrame
-    local lerpedCFrame = currentCFrame:Lerp(targetCFrame, 0.4)
+    local lerpedCFrame = currentCFrame:Lerp(targetCFrame, 0.3)
     
     Camera.CFrame = lerpedCFrame
 end
