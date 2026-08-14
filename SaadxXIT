@@ -9,6 +9,16 @@ local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
 -- ============================================
+-- VERIFICAÇÃO DO JOGO (PELO O NOME)
+-- ============================================
+local jogoAlvo = "Sintonia RP"
+local jogoAtual = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name
+
+if jogoAtual ~= jogoAlvo then
+    return
+end
+
+-- ============================================
 -- 🔑 SISTEMA DE KEY
 -- ============================================
 
