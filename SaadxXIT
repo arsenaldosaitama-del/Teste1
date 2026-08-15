@@ -1,8 +1,8 @@
 -- ============================================
--- SAADX XIT | BYPASS ANTI-CHEAT v4.4
+-- SAADX XIT | BYPASS ANTI-CHEAT v4.5 (LOADSTRING)
 -- ============================================
 
--- OFUSCAÇÃO
+-- OFUSCAÇÃO BÁSICA
 local _G = _G
 local pcall = pcall
 local task = task
@@ -10,23 +10,17 @@ local wait = task.wait
 local spawn = task.spawn
 
 -- ============================================
--- ANTI-DEBUG
+-- VERIFICAÇÃO DE AMBIENTE (mais leve)
 -- ============================================
-local function AntiDebug()
-    local success, trace = pcall(debug.traceback)
-    if success and trace then
-        if trace:find("loadstring") or trace:find("getfenv") then
-            return false
-        end
-    end
-    return true
+local function checkEnvironment()
+    local success = pcall(function()
+        return game:GetService("Players").LocalPlayer
+    end)
+    return success
 end
 
-if not AntiDebug() then
-    wait(5)
-    if not AntiDebug() then
-        return
-    end
+if not checkEnvironment() then
+    return
 end
 
 -- ============================================
@@ -537,7 +531,7 @@ end
 -- FUNÇÕES DO SCRIPT
 -- ============================================
 
--- ========== AIMBOT (NÃO MODIFICAR) ==========
+-- ========== AIMBOT ==========
 function iniciarAimbot()
     local G = game
     local RS = G:GetService("RunService")
@@ -612,7 +606,7 @@ function iniciarAimbot()
     end)
 end
 
--- ========== FOV CIRCLE (NÃO MODIFICAR) ==========
+-- ========== FOV CIRCLE ==========
 function iniciarFOV()
     local G = game
     local RS = G:GetService("RunService")
@@ -787,7 +781,6 @@ function iniciarESP()
             local height = math.abs(headPos.Y - rootPos.Y) * 2.8
             local width = height * 0.5
             
-            -- Correção: usa a posição correta baseada na cabeça e no tronco
             local centerX = (headPos.X + rootPos.X) / 2
             local centerY = (headPos.Y + rootPos.Y) / 2
             
@@ -837,16 +830,12 @@ function iniciarESP()
     local function setupESPForPlayer(player)
         if player == LP then return end
         
-        -- Cria os objetos se não existirem
         if not espData[player] then
             createESPObjects(player)
         end
         
-        -- Conecta o evento de respawn
         player.CharacterAdded:Connect(function()
-            -- Aguarda o personagem carregar
             task.wait(0.5)
-            -- O ESP será atualizado no loop
         end)
     end
     
@@ -871,11 +860,9 @@ function iniciarESP()
         
         for _, player in pairs(G.Players:GetPlayers()) do
             if player ~= LP then
-                -- Garante que os objetos existem
                 if not espData[player] then
                     createESPObjects(player)
                 end
-                -- Atualiza o ESP
                 updateESP(player)
             end
         end
