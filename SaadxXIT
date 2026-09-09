@@ -32,6 +32,7 @@ local KeysValidas = {
     ["SAADX-5LZ0AE7N3IDQO9LY"] = "12/09/2026",
     ["SAADX-Q8E7H4NETLSVDRAI"] = "10/09/2026",
     ["SAADX-707J3OV3QYW2A7DN"] = "10/09/2026",
+    ["SAADX-UHXGPV00V3RPOUN5"] = "10/09/2026",
 }
 
 local keyValidada = false
