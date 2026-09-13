@@ -27,14 +27,7 @@ end
 -- SISTEMA DE KEY COMPLETO
 -- ============================================
 local KeysValidas = {
-    ["SAADX-4UG9JXBCV2FRK0II"] = "10/09/2026",
-    ["SAADX-BM7NFX9A4BG563UB"] = "10/09/2026",
-    ["SAADX-5LZ0AE7N3IDQO9LY"] = "12/09/2026",
-    ["SAADX-Q8E7H4NETLSVDRAI"] = "10/09/2026",
-    ["SAADX-707J3OV3QYW2A7DN"] = "10/09/2026",
-    ["SAADX-UHXGPV00V3RPOUN5"] = "10/09/2026",
-    ["SAADX-FTC0674WJXXPEMHC"] = "11/09/2026",
-    ["SAADX-OIX3T2MXAH84KQYJ"] = "11/09/2026",
+    ["SAADX-Y3FFAIHJPNV47X2U"] = "14/09/2026",
 }
 
 local keyValidada = false
