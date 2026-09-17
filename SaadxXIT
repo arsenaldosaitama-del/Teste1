@@ -27,9 +27,7 @@ end
 -- SISTEMA DE KEY COMPLETO
 -- ============================================
 local KeysValidas = {
-    ["SAADX-Y3FFAIHJPNV47X2U"] = "14/09/2026",
-    ["SAADX-NJKO2IDREJSS1THT"] = "15/09/2026",
-    ["SAADX-04U4QHTBNMPSHY77"] = "16/09/2026",
+    ["SAADX-9NGUKAVOAI9ROANG"] = "18/09/2026",
 }
 
 local keyValidada = false
