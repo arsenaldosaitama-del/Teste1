@@ -1,30 +1,87 @@
 -- ============================================
--- SAADX XIT | BYPASS ANTI-CHEAT v4.5 (LOADSTRING)
+-- SAADX XIT | discord.gg/GSWQ3PzTHj
 -- ============================================
 
--- OFUSCAÇÃO BÁSICA
-local _G = _G
-local pcall = pcall
-local task = task
-local wait = task.wait
-local spawn = task.spawn
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
 
 -- ============================================
--- VERIFICAÇÃO DE AMBIENTE (mais leve)
+-- 🔌 VARIÁVEIS GLOBAIS
 -- ============================================
-local function checkEnvironment()
-    local success = pcall(function()
-        return game:GetService("Players").LocalPlayer
-    end)
-    return success
+
+if _G.SaadxCleanup then
+    pcall(_G.SaadxCleanup)
 end
 
-if not checkEnvironment() then
-    return
+local Connections = {}
+local AllDrawings = {}
+local EspData = {}
+local MenuAberto = false
+local SpectateConnection = nil
+local SpectateTarget = nil
+local SpectateStatusLabel = nil
+
+_G.SaadxConnections = Connections
+_G.SaadxDrawings = AllDrawings
+_G.SaadxEspData = EspData
+
+local function addConnection(conn)
+    if conn then
+        table.insert(Connections, conn)
+    end
+    return conn
 end
 
+local function addDrawing(drawing)
+    if drawing then
+        table.insert(AllDrawings, drawing)
+    end
+    return drawing
+end
+
+local function cleanup()
+    for _, conn in pairs(Connections) do
+        if conn then
+            pcall(function() conn:Disconnect() end)
+        end
+    end
+    table.clear(Connections)
+
+    for _, drawing in pairs(AllDrawings) do
+        if drawing then
+            pcall(function() drawing:Remove() end)
+        end
+    end
+    table.clear(AllDrawings)
+
+    for _, data in pairs(EspData) do
+        if data then
+            for _, obj in pairs(data) do
+                if obj and typeof(obj) == "userdata" then
+                    pcall(function() obj:Remove() end)
+                end
+            end
+        end
+    end
+    table.clear(EspData)
+
+    for _, guiName in ipairs({"KeyScreen", "SaadxXIT"}) do
+        local gui = game.Players.LocalPlayer.PlayerGui:FindFirstChild(guiName)
+        if gui then
+            pcall(function() gui:Destroy() end)
+        end
+    end
+
+    _G.SaadxCleanup = nil
+end
+
+_G.SaadxCleanup = cleanup
+
 -- ============================================
--- SISTEMA DE KEY COMPLETO
+-- SISTEMA DE KEY
 -- ============================================
 local KeysValidas = {
     ["SAADX-H419DE0EGHDZCV9N"] = "21/09/2026",
@@ -35,7 +92,7 @@ local keyValidada = false
 
 local function verificarKey(key)
     local expira = KeysValidas[key]
-    if not expira then return false, "❌ KEY INVÁLIDA!" end
+    if not expira then return false, "❌ Key inválida!" end
     
     local dia, mes, ano = expira:match("(%d+)/(%d+)/(%d+)")
     if dia and mes and ano then
@@ -45,60 +102,53 @@ local function verificarKey(key)
             return false, "❌ KEY EXPIRADA! (Expirou em " .. expira .. ")"
         end
     end
-    return true, "✅ KEY VÁLIDA! Bem-vindo ao Saadx XIT!"
+    return true, "✅ Key válida! Carregando..."
 end
 
 -- ============================================
 -- FUNÇÃO PARA ARRASTAR O MENU
 -- ============================================
 local function makeDraggable(frame, dragArea)
-    local UserInputService = game:GetService("UserInputService")
     local dragging = false
     local dragStart = nil
     local startPos = nil
 
-    dragArea.InputBegan:Connect(function(input)
+    addConnection(dragArea.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1
             or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
             startPos = frame.Position
 
-            input.Changed:Connect(function()
+            addConnection(input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
                     dragging = false
                 end
-            end)
+            end))
         end
-    end)
+    end))
 
-    UserInputService.InputChanged:Connect(function(input)
-        if not dragging then
-            return
-        end
-
+    addConnection(UserInputService.InputChanged:Connect(function(input)
+        if not dragging then return end
         if input.UserInputType ~= Enum.UserInputType.MouseMovement
-            and input.UserInputType ~= Enum.UserInputType.Touch then
-            return
-        end
+            and input.UserInputType ~= Enum.UserInputType.Touch then return end
 
         local delta = input.Position - dragStart
-
         frame.Position = UDim2.new(
             startPos.X.Scale,
             startPos.X.Offset + delta.X,
             startPos.Y.Scale,
             startPos.Y.Offset + delta.Y
         )
-    end)
+    end))
 end
 
 -- ============================================
 -- TELA DE KEY
 -- ============================================
 local function criarTelaKey()
-    if game:FindFirstChild("KeyScreen") then
-        game.KeyScreen:Destroy()
+    if game.Players.LocalPlayer.PlayerGui:FindFirstChild("KeyScreen") then
+        game.Players.LocalPlayer.PlayerGui.KeyScreen:Destroy()
     end
     
     local keyGui = Instance.new("ScreenGui")
@@ -140,7 +190,7 @@ local function criarTelaKey()
     sub.Size = UDim2.new(1, 0, 0, 20)
     sub.Position = UDim2.new(0, 0, 0, 48)
     sub.BackgroundTransparency = 1
-    sub.Text = "Digite sua KEY"
+    sub.Text = "by SaadXIT"
     sub.TextColor3 = Color3.fromRGB(255, 255, 255)
     sub.TextSize = 12
     sub.Font = Enum.Font.Gotham
@@ -154,7 +204,7 @@ local function criarTelaKey()
     input.TextColor3 = Color3.fromRGB(255, 255, 255)
     input.TextSize = 16
     input.Font = Enum.Font.GothamBold
-    input.PlaceholderText = "KEY aqui..."
+    input.PlaceholderText = "Digite sua Key"
     input.PlaceholderColor3 = Color3.fromRGB(150, 0, 0)
     input.BorderSizePixel = 2
     input.BorderColor3 = Color3.fromRGB(255, 0, 0)
@@ -175,7 +225,7 @@ local function criarTelaKey()
     btn.Size = UDim2.new(0.35, 0, 0, 32)
     btn.Position = UDim2.new(0.325, 0, 0, 155)
     btn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-    btn.Text = "✓ VERIFICAR"
+    btn.Text = "VERIFICAR"
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.TextSize = 14
     btn.Font = Enum.Font.GothamBold
@@ -185,7 +235,7 @@ local function criarTelaKey()
     local function processar()
         local key = input.Text
         if key == "" then
-            status.Text = "❌ Digite uma KEY!"
+            status.Text = "❌ Por favor, insira uma chave."
             status.TextColor3 = Color3.fromRGB(255, 200, 0)
             return
         end
@@ -200,10 +250,10 @@ local function criarTelaKey()
         end
     end
 
-    btn.Activated:Connect(processar)
-    input.FocusLost:Connect(function(enter) 
+    addConnection(btn.Activated:Connect(processar))
+    addConnection(input.FocusLost:Connect(function(enter) 
         if enter then processar() end 
-    end)
+    end))
 end
 
 -- ============================================
@@ -214,18 +264,265 @@ local settings = {
     fovCircle = false,
     wallCheck = false,
     espBox = false,
-    espLine = false,
     espName = false,
     espDistance = false,
-    fov = 80,
+    espTracer = false,
+    espHealthBar = false,
+    espDistanceMax = 5000,
+    fov = 140,
+    autoFarmLixeiro = false,
 }
 
-local menuAberto = false
+-- ============================================
+-- SISTEMA DE SPECTATE (CÂMERA LIVRE)
+-- ============================================
+local function atualizarStatusSpectate()
+    if not SpectateStatusLabel then return end
+    if SpectateTarget then
+        SpectateStatusLabel.Text = "Status: Espectando " .. SpectateTarget.Name
+        SpectateStatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    else
+        SpectateStatusLabel.Text = "Status: Não espectando"
+        SpectateStatusLabel.TextColor3 = Color3.fromRGB(255, 200, 200)
+    end
+end
+
+local function pararSpectate()
+    if SpectateConnection then
+        pcall(function() SpectateConnection:Disconnect() end)
+        SpectateConnection = nil
+    end
+    SpectateTarget = nil
+    Camera.CameraType = Enum.CameraType.Custom
+    if LocalPlayer.Character then
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            Camera.CameraSubject = hum
+        end
+    end
+    atualizarStatusSpectate()
+end
+
+local function spectatePlayer(player)
+    if not player or player == LocalPlayer then return end
+    if not player.Character then return end
+    
+    pararSpectate()
+    SpectateTarget = player
+    
+    Camera.CameraType = Enum.CameraType.Custom
+    
+    local function atualizarCamera()
+        if not SpectateTarget or not SpectateTarget.Character then
+            pararSpectate()
+            return
+        end
+        
+        local hum = SpectateTarget.Character:FindFirstChildOfClass("Humanoid")
+        if not hum or hum.Health <= 0 then
+            pararSpectate()
+            return
+        end
+        
+        Camera.CameraSubject = hum
+    end
+    
+    atualizarCamera()
+    
+    if SpectateConnection then
+        pcall(function() SpectateConnection:Disconnect() end)
+    end
+    
+    SpectateConnection = SpectateTarget.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        atualizarCamera()
+    end)
+    
+    addConnection(SpectateConnection)
+    atualizarStatusSpectate()
+end
 
 -- ============================================
--- FUNÇÃO PARA CRIAR SLIDER (FOV)
+-- SISTEMA AUTO FARM LIXEIRO
 -- ============================================
-local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, isFloat, offsetX)
+local AutoFarmRunning = false
+local AutoFarmTarget = nil
+local AutoFarmLastSearch = 0
+local AutoFarmSearchCooldown = 1
+local AutoFarmColetaEmAndamento = false
+
+local AutoFarmDebug = false
+
+local function debugPrint(msg)
+    if AutoFarmDebug then
+        print("[AUTO FARM] " .. msg)
+    end
+end
+
+local function acharLixoMaisProximo()
+    local char = LocalPlayer.Character
+    if not char then return nil end
+    
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    
+    local lixoMaisProximo = nil
+    local distanciaMinima = math.huge
+    
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj
+            and obj.Parent
+            and obj.Name == "Lixo"
+            and obj:IsA("BasePart")
+            and obj.Material == Enum.Material.SmoothPlastic
+        then
+            local dist = (obj.Position - root.Position).Magnitude
+            if dist < distanciaMinima then
+                distanciaMinima = dist
+                lixoMaisProximo = obj
+            end
+        end
+    end
+    
+    return lixoMaisProximo
+end
+
+local function lixoAindaValido(lixo)
+    if not lixo then return false end
+    if not lixo.Parent then return false end
+    if lixo.Name ~= "Lixo" then return false end
+    if not lixo:IsA("BasePart") then return false end
+    if lixo.Material ~= Enum.Material.SmoothPlastic then return false end
+    return true
+end
+
+local function acharPromptDoLixo(lixo)
+    if not lixo or not lixo.Parent then return nil end
+    local prompt = lixo:FindFirstChild("prompt")
+    if not prompt then
+        prompt = lixo:FindFirstChildOfClass("ProximityPrompt")
+    end
+    if not prompt then
+        prompt = lixo:FindFirstChildWhichIsA("ProximityPrompt", true)
+    end
+    return prompt
+end
+
+local function pararAutoFarm()
+    AutoFarmRunning = false
+    AutoFarmTarget = nil
+    AutoFarmColetaEmAndamento = false
+    debugPrint("Auto Farm desligado")
+end
+
+local function iniciarAutoFarm()
+    AutoFarmRunning = false
+    task.wait(0.1)
+    
+    AutoFarmRunning = true
+    AutoFarmTarget = nil
+    AutoFarmColetaEmAndamento = false
+    AutoFarmLastSearch = 0
+    
+    debugPrint("Auto Farm ligado")
+    
+    task.spawn(function()
+        while AutoFarmRunning do
+            if not settings.autoFarmLixeiro then
+                AutoFarmRunning = false
+                AutoFarmTarget = nil
+                debugPrint("Auto Farm desligado (toggle)")
+                break
+            end
+            
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            
+            if not (hum and root and hum.Health > 0) then
+                task.wait(0.5)
+                continue
+            end
+            
+            if AutoFarmColetaEmAndamento then
+                task.wait(0.2)
+                continue
+            end
+            
+            if AutoFarmTarget and not lixoAindaValido(AutoFarmTarget) then
+                debugPrint("Alvo inválido, descartando")
+                AutoFarmTarget = nil
+            end
+            
+            if not AutoFarmTarget then
+                local agora = tick()
+                if agora - AutoFarmLastSearch >= AutoFarmSearchCooldown then
+                    AutoFarmLastSearch = agora
+                    AutoFarmTarget = acharLixoMaisProximo()
+                    
+                    if AutoFarmTarget then
+                        debugPrint("Novo lixo encontrado: " .. AutoFarmTarget:GetFullName())
+                    else
+                        debugPrint("Procurando próximo lixo...")
+                    end
+                end
+                
+                if not AutoFarmTarget then
+                    task.wait(1)
+                    continue
+                end
+            end
+            
+            local prompt = acharPromptDoLixo(AutoFarmTarget)
+            if not prompt then
+                debugPrint("Lixo sem prompt, descartando")
+                AutoFarmTarget = nil
+                task.wait(0.3)
+                continue
+            end
+            
+            local dist = (AutoFarmTarget.Position - root.Position).Magnitude
+            
+            if dist > 5 then
+                hum:MoveTo(AutoFarmTarget.Position)
+                task.wait(0.2)
+            else
+                hum:MoveTo(root.Position)
+                
+                AutoFarmColetaEmAndamento = true
+                local alvoColeta = AutoFarmTarget
+                
+                task.wait(0.15)
+                
+                local promptAtual = acharPromptDoLixo(alvoColeta)
+                if promptAtual and promptAtual.Enabled then
+                    pcall(function()
+                        promptAtual:InputHoldBegin()
+                        task.wait(promptAtual.HoldDuration + 0.1)
+                        promptAtual:InputHoldEnd()
+                    end)
+                    
+                    debugPrint("Lixo coletado")
+                end
+                
+                task.wait(0.4)
+                
+                AutoFarmTarget = nil
+                AutoFarmColetaEmAndamento = false
+                AutoFarmLastSearch = 0
+                
+                debugPrint("Procurando próximo lixo...")
+                
+                task.wait(0.3)
+            end
+        end
+    end)
+end
+
+-- ============================================
+-- FUNÇÃO PARA CRIAR SLIDER
+-- ============================================
+local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, isFloat, offsetX, suffix)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 28)
     frame.Position = UDim2.new(0, 0, 0, y)
@@ -233,7 +530,9 @@ local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, is
     frame.Parent = parent
     
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0, 30, 0, 14)
+    local isLongSlider = (labelText == "Distância Máxima ESP")
+
+    label.Size = isLongSlider and UDim2.new(0, 120, 0, 14) or UDim2.new(0, 80, 0, 14)
     label.Position = UDim2.new(0, 0, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = labelText .. ":"
@@ -244,8 +543,8 @@ local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, is
     label.Parent = frame
     
     local sliderFrame = Instance.new("Frame")
-    sliderFrame.Size = UDim2.new(0, 135, 0, 3)
-    sliderFrame.Position = UDim2.new(0, 34 + (offsetX or 0), 0, 10)
+    sliderFrame.Size = UDim2.new(0, 105, 0, 3)
+    sliderFrame.Position = isLongSlider and UDim2.new(0, 135 + (offsetX or 0), 0, 10) or UDim2.new(0, 95 + (offsetX or 0), 0, 10)
     sliderFrame.BackgroundColor3 = Color3.fromRGB(60, 0, 0)
     sliderFrame.BorderSizePixel = 1
     sliderFrame.BorderColor3 = Color3.fromRGB(200, 0, 0)
@@ -260,10 +559,10 @@ local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, is
     fill.Parent = sliderFrame
     
     local valueLabel = Instance.new("TextLabel")
-    valueLabel.Size = UDim2.new(0, 35, 0, 14)
-    valueLabel.Position = UDim2.new(0, 173 + (offsetX or 0), 0, 0)
+    valueLabel.Size = UDim2.new(0, 45, 0, 14)
+    valueLabel.Position = isLongSlider and UDim2.new(0, 245 + (offsetX or 0), 0, 0) or UDim2.new(0, 205 + (offsetX or 0), 0, 0)
     valueLabel.BackgroundTransparency = 1
-    valueLabel.Text = isFloat and string.format("%.1f", currentVal) or tostring(currentVal)
+    valueLabel.Text = isFloat and string.format("%.1f", currentVal) or (tostring(currentVal) .. (suffix or ""))
     valueLabel.TextColor3 = Color3.fromRGB(255, 200, 200)
     valueLabel.TextSize = 11
     valueLabel.Font = Enum.Font.Gotham
@@ -271,8 +570,8 @@ local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, is
     valueLabel.Parent = frame
     
     local dragButton = Instance.new("TextButton")
-    dragButton.Size = UDim2.new(0, 135, 0, 16)
-    dragButton.Position = UDim2.new(0, 34 + (offsetX or 0), 0, 2)
+    dragButton.Size = UDim2.new(0, 105, 0, 16)
+    dragButton.Position = isLongSlider and UDim2.new(0, 135 + (offsetX or 0), 0, 2) or UDim2.new(0, 95 + (offsetX or 0), 0, 2)
     dragButton.BackgroundTransparency = 1
     dragButton.Text = ""
     dragButton.Parent = frame
@@ -281,20 +580,20 @@ local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, is
     local startMousePos = nil
     local startValue = nil
     
-    dragButton.InputBegan:Connect(function(input)
+    addConnection(dragButton.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             startMousePos = input.Position.X
             startValue = settings[settingKey]
-            input.Changed:Connect(function()
+            addConnection(input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
                     dragging = false
                 end
-            end)
+            end))
         end
-    end)
+    end))
     
-    dragButton.InputChanged:Connect(function(input)
+    addConnection(dragButton.InputChanged:Connect(function(input)
         if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local deltaX = input.Position.X - startMousePos
             local sliderWidth = sliderFrame.AbsoluteSize.X
@@ -313,23 +612,19 @@ local function createSlider(parent, y, labelText, minVal, maxVal, settingKey, is
             local newPercent = (newValue - minVal) / (maxVal - minVal)
             fill.Size = UDim2.new(newPercent, 0, 1, 0)
             
-            valueLabel.Text = isFloat and string.format("%.1f", newValue) or tostring(newValue)
-            
-            if settingKey == "fov" and fovCircle then
-                fovCircle.Radius = newValue
-            end
+            valueLabel.Text = isFloat and string.format("%.1f", newValue) or (tostring(newValue) .. (suffix or ""))
         end
-    end)
+    end))
     
     return frame
 end
 
 -- ============================================
--- MENU COMPLETO (COM DISCORD NO TÍTULO)
+-- MENU COMPLETO
 -- ============================================
 function criarMenuCompleto()
-    if menuAberto then return end
-    menuAberto = true
+    if MenuAberto then return end
+    MenuAberto = true
     
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "SaadxXIT"
@@ -337,25 +632,22 @@ function criarMenuCompleto()
     screenGui.Parent = game.Players.LocalPlayer.PlayerGui
     
     local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 235, 0, 280)
-    mainFrame.Position = UDim2.new(0.5, -117, 0.5, -140)
+    mainFrame.Size = UDim2.new(0, 280, 0, 340)
+    mainFrame.Position = UDim2.new(0.5, -140, 0.5, -170)
     mainFrame.BackgroundColor3 = Color3.fromRGB(15, 0, 0)
     mainFrame.BackgroundTransparency = 0.05
     mainFrame.BorderSizePixel = 2
     mainFrame.BorderColor3 = Color3.fromRGB(255, 0, 0)
     mainFrame.Parent = screenGui
     
-    -- Título (Área arrastável)
     local tituloBar = Instance.new("Frame")
     tituloBar.Size = UDim2.new(1, 0, 0, 26)
     tituloBar.BackgroundColor3 = Color3.fromRGB(40, 0, 0)
     tituloBar.BorderSizePixel = 0
     tituloBar.Parent = mainFrame
     
-    -- Torna o menu arrastável pela barra de título
     makeDraggable(mainFrame, tituloBar)
     
-    -- Texto do título com Discord
     local tituloText = Instance.new("TextLabel")
     tituloText.Size = UDim2.new(1, -65, 1, 0)
     tituloText.Position = UDim2.new(0, 4, 0, 0)
@@ -367,7 +659,6 @@ function criarMenuCompleto()
     tituloText.TextXAlignment = Enum.TextXAlignment.Left
     tituloText.Parent = tituloBar
     
-    -- Botão Minimizar
     local btnMinimizar = Instance.new("TextButton")
     btnMinimizar.Size = UDim2.new(0, 16, 0, 16)
     btnMinimizar.Position = UDim2.new(1, -36, 0, 5)
@@ -379,7 +670,6 @@ function criarMenuCompleto()
     btnMinimizar.BorderSizePixel = 0
     btnMinimizar.Parent = tituloBar
     
-    -- Botão Fechar
     local btnFechar = Instance.new("TextButton")
     btnFechar.Size = UDim2.new(0, 16, 0, 16)
     btnFechar.Position = UDim2.new(1, -18, 0, 5)
@@ -390,33 +680,33 @@ function criarMenuCompleto()
     btnFechar.Font = Enum.Font.GothamBold
     btnFechar.BorderSizePixel = 0
     btnFechar.Parent = tituloBar
-    btnFechar.MouseButton1Click:Connect(function()
-        screenGui:Destroy()
-        menuAberto = false
-    end)
+    addConnection(btnFechar.MouseButton1Click:Connect(function()
+        MenuAberto = false
+        pararSpectate()
+        pararAutoFarm()
+        cleanup()
+    end))
     
-    -- Função do Minimizar
     local minimizado = false
-    btnMinimizar.MouseButton1Click:Connect(function()
+    addConnection(btnMinimizar.MouseButton1Click:Connect(function()
         minimizado = not minimizado
         for _, child in ipairs(mainFrame:GetChildren()) do
             if child ~= tituloBar then
                 child.Visible = not minimizado
             end
         end
-        mainFrame.Size = minimizado and UDim2.new(0, 235, 0, 26) or UDim2.new(0, 235, 0, 280)
-    end)
+        mainFrame.Size = minimizado and UDim2.new(0, 280, 0, 26) or UDim2.new(0, 280, 0, 340)
+    end))
     
-    -- Abas
     local tabs = Instance.new("Frame")
     tabs.Size = UDim2.new(1, -8, 0, 22)
     tabs.Position = UDim2.new(0, 4, 0, 30)
     tabs.BackgroundTransparency = 1
     tabs.Parent = mainFrame
     
-    local function criarAba(texto, x)
+    local function criarAba(texto, x, largura)
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0.5, -2, 1, 0)
+        btn.Size = UDim2.new(largura, -2, 1, 0)
         btn.Position = UDim2.new(x, 0, 0, 0)
         btn.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
         btn.BorderSizePixel = 1
@@ -429,10 +719,11 @@ function criarMenuCompleto()
         return btn
     end
     
-    local btnPvP = criarAba("PvP", 0)
-    local btnPlayer = criarAba("Player", 0.5)
+    local btnPvP = criarAba("PvP", 0, 1/4)
+    local btnPlayer = criarAba("Player", 1/4, 1/4)
+    local btnSpectate = criarAba("Spectate", 2/4, 1/4)
+    local btnFarm = criarAba("Farm", 3/4, 1/4)
     
-    -- Conteúdo
     local content = Instance.new("Frame")
     content.Size = UDim2.new(1, -8, 1, -60)
     content.Position = UDim2.new(0, 4, 0, 56)
@@ -450,8 +741,19 @@ function criarMenuCompleto()
     playerContent.Visible = false
     playerContent.Parent = content
     
-    -- Função para criar toggle
-    local function criarToggle(parent, text, y, settingKey)
+    local spectateContent = Instance.new("Frame")
+    spectateContent.Size = UDim2.new(1, 0, 1, 0)
+    spectateContent.BackgroundTransparency = 1
+    spectateContent.Visible = false
+    spectateContent.Parent = content
+    
+    local farmContent = Instance.new("Frame")
+    farmContent.Size = UDim2.new(1, 0, 1, 0)
+    farmContent.BackgroundTransparency = 1
+    farmContent.Visible = false
+    farmContent.Parent = content
+    
+    local function criarToggle(parent, text, y, settingKey, callback)
         local linha = Instance.new("Frame")
         linha.Size = UDim2.new(1, 0, 0, 22)
         linha.Position = UDim2.new(0, 0, 0, y)
@@ -480,59 +782,160 @@ function criarMenuCompleto()
         btn.Font = Enum.Font.GothamBold
         btn.Parent = linha
         
-        btn.MouseButton1Click:Connect(function()
+        addConnection(btn.MouseButton1Click:Connect(function()
             settings[settingKey] = not settings[settingKey]
             btn.BackgroundColor3 = settings[settingKey] and Color3.fromRGB(80, 0, 0) or Color3.fromRGB(50, 0, 0)
             btn.Text = settings[settingKey] and "ON" or "OFF"
-        end)
+            if callback then callback(settings[settingKey]) end
+        end))
     end
     
     -- ========== PVP CONTENT ==========
     criarToggle(pvpContent, "Aimbot", 2, "aimbot")
-    criarToggle(pvpContent, "FOV Circle", 24, "fovCircle")
+    criarToggle(pvpContent, "Mostrar FOV", 24, "fovCircle")
     criarToggle(pvpContent, "Wall Check", 46, "wallCheck")
-    createSlider(pvpContent, 74, "FOV", 10, 300, "fov", false, -5)
+    createSlider(pvpContent, 74, "FOV Size", 10, 300, "fov", false, -5)
     
     -- ========== PLAYER CONTENT ==========
     criarToggle(playerContent, "ESP Box", 2, "espBox")
-    criarToggle(playerContent, "ESP Line", 24, "espLine")
+    criarToggle(playerContent, "ESP Tracer", 24, "espTracer")
     criarToggle(playerContent, "ESP Name", 46, "espName")
     criarToggle(playerContent, "ESP Distance", 68, "espDistance")
+    criarToggle(playerContent, "ESP HealthBar", 90, "espHealthBar")
+    createSlider(playerContent, 112, "Distância Máxima ESP", 50, 5000, "espDistanceMax", false, -5, "m")
     
-    -- Função para selecionar aba
-    local function selecionarAba(pvp)
-        pvpContent.Visible = pvp
-        playerContent.Visible = not pvp
-        btnPvP.BackgroundColor3 = pvp and Color3.fromRGB(80, 0, 0) or Color3.fromRGB(50, 0, 0)
-        btnPlayer.BackgroundColor3 = pvp and Color3.fromRGB(50, 0, 0) or Color3.fromRGB(80, 0, 0)
+    -- ========== SPECTATE CONTENT ==========
+    SpectateStatusLabel = Instance.new("TextLabel")
+    SpectateStatusLabel.Size = UDim2.new(1, 0, 0, 18)
+    SpectateStatusLabel.Position = UDim2.new(0, 0, 0, 0)
+    SpectateStatusLabel.BackgroundTransparency = 1
+    SpectateStatusLabel.Text = "Status: Não espectando"
+    SpectateStatusLabel.TextColor3 = Color3.fromRGB(255, 200, 200)
+    SpectateStatusLabel.TextSize = 10
+    SpectateStatusLabel.Font = Enum.Font.GothamBold
+    SpectateStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+    SpectateStatusLabel.Parent = spectateContent
+    
+    local btnStopSpectate = Instance.new("TextButton")
+    btnStopSpectate.Size = UDim2.new(1, 0, 0, 22)
+    btnStopSpectate.Position = UDim2.new(0, 0, 0, 20)
+    btnStopSpectate.BackgroundColor3 = Color3.fromRGB(120, 0, 0)
+    btnStopSpectate.BorderSizePixel = 1
+    btnStopSpectate.BorderColor3 = Color3.fromRGB(200, 0, 0)
+    btnStopSpectate.Text = "🚫 Parar de Espectar"
+    btnStopSpectate.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnStopSpectate.TextSize = 10
+    btnStopSpectate.Font = Enum.Font.GothamBold
+    btnStopSpectate.Parent = spectateContent
+    addConnection(btnStopSpectate.MouseButton1Click:Connect(function()
+        pararSpectate()
+    end))
+    
+    local playerList = Instance.new("ScrollingFrame")
+    playerList.Size = UDim2.new(1, 0, 1, -50)
+    playerList.Position = UDim2.new(0, 0, 0, 48)
+    playerList.BackgroundTransparency = 1
+    playerList.BorderSizePixel = 0
+    playerList.ScrollBarThickness = 3
+    playerList.ScrollBarImageColor3 = Color3.fromRGB(200, 0, 0)
+    playerList.CanvasSize = UDim2.new(0, 0, 0, 0)
+    playerList.Parent = spectateContent
+    
+    local playerButtons = {}
+    
+    local function atualizarLista()
+        for _, btn in pairs(playerButtons) do
+            if btn then btn:Destroy() end
+        end
+        table.clear(playerButtons)
+        
+        local y = 0
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                local btn = Instance.new("TextButton")
+                btn.Size = UDim2.new(1, -4, 0, 20)
+                btn.Position = UDim2.new(0, 2, 0, y)
+                btn.BackgroundColor3 = Color3.fromRGB(40, 0, 0)
+                btn.BorderSizePixel = 1
+                btn.BorderColor3 = Color3.fromRGB(120, 0, 0)
+                btn.Text = "👁 " .. player.Name
+                btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                btn.TextSize = 10
+                btn.Font = Enum.Font.Gotham
+                btn.TextXAlignment = Enum.TextXAlignment.Left
+                btn.Parent = playerList
+                
+                addConnection(btn.MouseButton1Click:Connect(function()
+                    spectatePlayer(player)
+                end))
+                
+                table.insert(playerButtons, btn)
+                y = y + 22
+            end
+        end
+        
+        playerList.CanvasSize = UDim2.new(0, 0, 0, y)
     end
     
-    btnPvP.MouseButton1Click:Connect(function()
-        selecionarAba(true)
+    atualizarLista()
+    
+    addConnection(Players.PlayerAdded:Connect(function()
+        task.wait(0.5)
+        atualizarLista()
+    end))
+    
+    addConnection(Players.PlayerRemoving:Connect(function(player)
+        if SpectateTarget == player then
+            pararSpectate()
+        end
+        task.wait(0.1)
+        atualizarLista()
+    end))
+    
+    -- ========== FARM CONTENT ==========
+    criarToggle(farmContent, "Auto Farm Lixeiro", 2, "autoFarmLixeiro", function(ativo)
+        if ativo then
+            iniciarAutoFarm()
+        else
+            pararAutoFarm()
+        end
     end)
     
-    btnPlayer.MouseButton1Click:Connect(function()
-        selecionarAba(false)
-    end)
+    -- ========== SELEÇÃO DE ABAS ==========
+    local function selecionarAba(aba)
+        pvpContent.Visible = (aba == "pvp")
+        playerContent.Visible = (aba == "player")
+        spectateContent.Visible = (aba == "spectate")
+        farmContent.Visible = (aba == "farm")
+        
+        btnPvP.BackgroundColor3 = (aba == "pvp") and Color3.fromRGB(80, 0, 0) or Color3.fromRGB(50, 0, 0)
+        btnPlayer.BackgroundColor3 = (aba == "player") and Color3.fromRGB(80, 0, 0) or Color3.fromRGB(50, 0, 0)
+        btnSpectate.BackgroundColor3 = (aba == "spectate") and Color3.fromRGB(80, 0, 0) or Color3.fromRGB(50, 0, 0)
+        btnFarm.BackgroundColor3 = (aba == "farm") and Color3.fromRGB(80, 0, 0) or Color3.fromRGB(50, 0, 0)
+    end
     
-    selecionarAba(true)
+    addConnection(btnPvP.MouseButton1Click:Connect(function() selecionarAba("pvp") end))
+    addConnection(btnPlayer.MouseButton1Click:Connect(function() selecionarAba("player") end))
+    addConnection(btnSpectate.MouseButton1Click:Connect(function() selecionarAba("spectate") end))
+    addConnection(btnFarm.MouseButton1Click:Connect(function() selecionarAba("farm") end))
     
-    -- Inicia as funções do script
+    selecionarAba("pvp")
+    
     iniciarAimbot()
     iniciarFOV()
     iniciarESP()
 end
 
 -- ============================================
--- FUNÇÕES DO SCRIPT
+-- AIMBOT (COM REVALIDAÇÃO CONTÍNUA DO ALVO)
 -- ============================================
-
--- ========== AIMBOT ==========
 function iniciarAimbot()
     local G = game
     local RS = G:GetService("RunService")
     local C = workspace.CurrentCamera
     local LP = G.Players.LocalPlayer
+    
+    local SMOOTH = 0.3
     
     local function isTargetValid(target)
         if not target or target == LP then return false end
@@ -540,6 +943,32 @@ function iniciarAimbot()
         if not char then return false end
         local hum = char:FindFirstChild("Humanoid")
         if not hum or hum.Health <= 0 then return false end
+        
+        local head = char:FindFirstChild("Head")
+        if not head then return false end
+        
+        local pos, onScreen = C:WorldToViewportPoint(head.Position)
+        if not onScreen then return false end
+        
+        local center = C.ViewportSize / 2
+        local dist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+        if dist > settings.fov then return false end
+        
+        if settings.wallCheck then
+            local params = RaycastParams.new()
+            params.FilterType = Enum.RaycastFilterType.Blacklist
+            params.FilterDescendantsInstances = {LP.Character}
+            params.IgnoreWater = true
+            
+            local camPos = C.CFrame.Position
+            local direction = head.Position - camPos
+            local result = workspace:Raycast(camPos, direction, params)
+            
+            if not result or not result.Instance:IsDescendantOf(char) then
+                return false
+            end
+        end
+        
         return true
     end
     
@@ -585,30 +1014,76 @@ function iniciarAimbot()
         return bestTarget
     end
     
-    RS.RenderStepped:Connect(function()
-        if settings.aimbot then
-            local target = getClosestTarget()
-            if target then
-                local head = target.Character:FindFirstChild("Head")
-                if head then
-                    local targetPos = head.Position
-                    local camPos = C.CFrame.Position
-                    local dir = (targetPos - camPos).unit
-                    local targetCF = CFrame.lookAt(camPos, camPos + dir)
-                    C.CFrame = C.CFrame:Lerp(targetCF, 0.3)
+    local currentTarget = nil
+    
+    addConnection(RS.RenderStepped:Connect(function(deltaTime)
+        if not settings.aimbot then
+            currentTarget = nil
+            return
+        end
+        
+        if currentTarget then
+            if not isTargetValid(currentTarget) then
+                currentTarget = nil
+            end
+        end
+        
+        local novoTarget = getClosestTarget()
+        
+        if not currentTarget then
+            currentTarget = novoTarget
+        elseif novoTarget and novoTarget ~= currentTarget then
+            local headAtual = currentTarget.Character and currentTarget.Character:FindFirstChild("Head")
+            local headNovo = novoTarget.Character and novoTarget.Character:FindFirstChild("Head")
+            
+            if headAtual and headNovo then
+                local center = C.ViewportSize / 2
+                local posAtual = C:WorldToViewportPoint(headAtual.Position)
+                local posNovo = C:WorldToViewportPoint(headNovo.Position)
+                
+                if posAtual and posNovo then
+                    local distAtual = (Vector2.new(posAtual.X, posAtual.Y) - center).Magnitude
+                    local distNovo = (Vector2.new(posNovo.X, posNovo.Y) - center).Magnitude
+                    
+                    if distNovo < distAtual - 5 then
+                        currentTarget = novoTarget
+                    end
                 end
             end
         end
-    end)
+        
+        if not currentTarget then return end
+        
+        local head = currentTarget.Character:FindFirstChild("Head")
+        if not head then
+            currentTarget = nil
+            return
+        end
+        
+        local targetPos = head.Position
+        local camPos = C.CFrame.Position
+        local dir = (targetPos - camPos).unit
+        
+        if dir.Magnitude < 0.001 then return end
+        
+        local targetCF = CFrame.lookAt(camPos, camPos + dir)
+        
+        local smoothFactor = SMOOTH * deltaTime * 60
+        smoothFactor = math.clamp(smoothFactor, 0.01, 1.0)
+        
+        C.CFrame = C.CFrame:Lerp(targetCF, smoothFactor)
+    end))
 end
 
--- ========== FOV CIRCLE ==========
+-- ============================================
+-- FOV CIRCLE
+-- ============================================
 function iniciarFOV()
     local G = game
     local RS = G:GetService("RunService")
     local C = workspace.CurrentCamera
     
-    local circle = Drawing.new("Circle")
+    local circle = addDrawing(Drawing.new("Circle"))
     circle.Visible = false
     circle.Color = Color3.fromRGB(255, 0, 0)
     circle.Thickness = 1.5
@@ -617,7 +1092,7 @@ function iniciarFOV()
     circle.Radius = settings.fov
     circle.Transparency = 0.8
     
-    RS.RenderStepped:Connect(function()
+    addConnection(RS.RenderStepped:Connect(function()
         if settings.fovCircle then
             local viewportSize = C.ViewportSize
             circle.Position = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
@@ -626,11 +1101,11 @@ function iniciarFOV()
         else
             circle.Visible = false
         end
-    end)
+    end))
 end
 
 -- ============================================
--- ========== ESP CORRIGIDO ==========
+-- ESP
 -- ============================================
 function iniciarESP()
     local G = game
@@ -638,86 +1113,78 @@ function iniciarESP()
     local C = workspace.CurrentCamera
     local LP = G.Players.LocalPlayer
     
-    -- Armazena dados do ESP por jogador
-    local espData = {}
-    
-    -- Função para criar os objetos de um jogador
     local function createESPObjects(player)
-        if espData[player] then return end
+        if EspData[player] then return end
         
-        local data = {
-            box = nil,
-            line = nil,
-            name = nil,
-            distance = nil,
-            active = true,
-            character = nil
-        }
+        local data = {}
         
-        -- Box
-        local box = Drawing.new("Square")
-        box.Visible = false
-        box.Color = Color3.fromRGB(255, 255, 255)
-        box.Thickness = 1.5
-        box.Filled = false
-        data.box = box
+        data.box = addDrawing(Drawing.new("Square"))
+        data.box.Visible = false
+        data.box.Color = Color3.fromRGB(255, 255, 255)
+        data.box.Thickness = 1.5
+        data.box.Filled = false
         
-        -- Line
-        local line = Drawing.new("Line")
-        line.Visible = false
-        line.Color = Color3.fromRGB(255, 255, 255)
-        line.Thickness = 1
-        data.line = line
+        data.name = addDrawing(Drawing.new("Text"))
+        data.name.Visible = false
+        data.name.Color = Color3.fromRGB(255, 255, 255)
+        data.name.Size = 12
+        data.name.Center = true
+        data.name.Outline = true
+        data.name.OutlineColor = Color3.fromRGB(0, 0, 0)
+        data.name.Font = 2
         
-        -- Name
-        local name = Drawing.new("Text")
-        name.Visible = false
-        name.Color = Color3.fromRGB(255, 255, 255)
-        name.Size = 12
-        name.Center = true
-        name.Outline = true
-        name.OutlineColor = Color3.fromRGB(0, 0, 0)
-        name.Font = 2
-        data.name = name
+        data.distance = addDrawing(Drawing.new("Text"))
+        data.distance.Visible = false
+        data.distance.Color = Color3.fromRGB(255, 255, 255)
+        data.distance.Size = 11
+        data.distance.Center = true
+        data.distance.Outline = true
+        data.distance.OutlineColor = Color3.fromRGB(0, 0, 0)
+        data.distance.Font = 2
         
-        -- Distance
-        local distance = Drawing.new("Text")
-        distance.Visible = false
-        distance.Color = Color3.fromRGB(255, 255, 255)
-        distance.Size = 11
-        distance.Center = true
-        distance.Outline = true
-        distance.OutlineColor = Color3.fromRGB(0, 0, 0)
-        distance.Font = 2
-        data.distance = distance
+        data.tracer = addDrawing(Drawing.new("Line"))
+        data.tracer.Visible = false
+        data.tracer.Color = Color3.fromRGB(255, 255, 255)
+        data.tracer.Thickness = 1
         
-        espData[player] = data
+        data.healthBarBg = addDrawing(Drawing.new("Square"))
+        data.healthBarBg.Visible = false
+        data.healthBarBg.Color = Color3.fromRGB(80, 0, 0)
+        data.healthBarBg.Filled = true
+        data.healthBarBg.Thickness = 1
+        
+        data.healthBarFill = addDrawing(Drawing.new("Square"))
+        data.healthBarFill.Visible = false
+        data.healthBarFill.Color = Color3.fromRGB(0, 255, 0)
+        data.healthBarFill.Filled = true
+        data.healthBarFill.Thickness = 1
+        
+        EspData[player] = data
     end
     
-    -- Função para remover todos os objetos de um jogador
     local function removeESPObjects(player)
-        local data = espData[player]
+        local data = EspData[player]
         if data then
-            if data.box then data.box:Remove() end
-            if data.line then data.line:Remove() end
-            if data.name then data.name:Remove() end
-            if data.distance then data.distance:Remove() end
-            espData[player] = nil
+            for _, obj in pairs(data) do
+                if obj then
+                    pcall(function() obj:Remove() end)
+                end
+            end
+            EspData[player] = nil
         end
     end
     
-    -- Função para esconder todos os ESPs de um jogador
     local function hideESP(player)
-        local data = espData[player]
+        local data = EspData[player]
         if data then
-            if data.box then data.box.Visible = false end
-            if data.line then data.line.Visible = false end
-            if data.name then data.name.Visible = false end
-            if data.distance then data.distance.Visible = false end
+            for _, obj in pairs(data) do
+                if obj then
+                    obj.Visible = false
+                end
+            end
         end
     end
     
-    -- Verifica se um jogador está vivo e visível
     local function isPlayerValid(player)
         if not player or player == LP then return false end
         local char = player.Character
@@ -727,30 +1194,32 @@ function iniciarESP()
         return true
     end
     
-    -- Obtém as partes do personagem
-    local function getCharacterParts(char)
-        local head = char:FindFirstChild("Head")
-        local root = char:FindFirstChild("HumanoidRootPart")
-        return head, root
-    end
-    
-    -- Atualiza o ESP de um jogador
     local function updateESP(player)
-        local data = espData[player]
+        local data = EspData[player]
         if not data then return end
         
-        -- Verifica se o jogador é válido
         if not isPlayerValid(player) then
             hideESP(player)
             return
         end
         
         local char = player.Character
-        local head, root = getCharacterParts(char)
+        local head = char:FindFirstChild("Head")
+        local root = char:FindFirstChild("HumanoidRootPart")
+        local humanoid = char:FindFirstChild("Humanoid")
         
-        if not head or not root then
+        if not head or not root or not humanoid then
             hideESP(player)
             return
+        end
+        
+        local localRootCheck = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+        if localRootCheck then
+            local distCheck = (root.Position - localRootCheck.Position).Magnitude
+            if distCheck > settings.espDistanceMax then
+                hideESP(player)
+                return
+            end
         end
         
         local headPos, headOnScreen = C:WorldToViewportPoint(head.Position)
@@ -761,7 +1230,6 @@ function iniciarESP()
             return
         end
         
-        -- Verifica se está dentro da tela
         local viewport = C.ViewportSize
         if headPos.X < -10 or headPos.X > viewport.X + 10 or 
            headPos.Y < -10 or headPos.Y > viewport.Y + 10 then
@@ -770,34 +1238,22 @@ function iniciarESP()
         end
         
         local headPos2D = Vector2.new(headPos.X, headPos.Y)
-        local rootPos2D = Vector2.new(rootPos.X, rootPos.Y)
         
-        -- ===== BOX =====
+        local boxHeight = math.abs(headPos.Y - rootPos.Y) * 2.8
+        local boxWidth = boxHeight * 0.5
+        local centerX = (headPos.X + rootPos.X) / 2
+        local centerY = (headPos.Y + rootPos.Y) / 2
+        local boxX = centerX - boxWidth / 2
+        local boxY = centerY - boxHeight / 2
+        
         if settings.espBox then
-            local height = math.abs(headPos.Y - rootPos.Y) * 2.8
-            local width = height * 0.5
-            
-            local centerX = (headPos.X + rootPos.X) / 2
-            local centerY = (headPos.Y + rootPos.Y) / 2
-            
-            data.box.Size = Vector2.new(width, height)
-            data.box.Position = Vector2.new(centerX - width/2, centerY - height/2)
+            data.box.Size = Vector2.new(boxWidth, boxHeight)
+            data.box.Position = Vector2.new(boxX, boxY)
             data.box.Visible = true
         else
             data.box.Visible = false
         end
         
-        -- ===== LINE =====
-        if settings.espLine then
-            local bottomCenter = Vector2.new(viewport.X / 2, viewport.Y)
-            data.line.From = bottomCenter
-            data.line.To = headPos2D
-            data.line.Visible = true
-        else
-            data.line.Visible = false
-        end
-        
-        -- ===== NAME =====
         if settings.espName then
             data.name.Text = player.Name
             data.name.Position = Vector2.new(headPos.X, headPos.Y - 20)
@@ -806,7 +1262,6 @@ function iniciarESP()
             data.name.Visible = false
         end
         
-        -- ===== DISTANCE =====
         if settings.espDistance then
             local localRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
             if localRoot then
@@ -820,49 +1275,81 @@ function iniciarESP()
         else
             data.distance.Visible = false
         end
-    end
-    
-    -- Função para configurar ESP para um jogador
-    local function setupESPForPlayer(player)
-        if player == LP then return end
         
-        if not espData[player] then
-            createESPObjects(player)
+        if settings.espTracer then
+            local topCenter = Vector2.new(C.ViewportSize.X / 2, 0)
+            data.tracer.From = topCenter
+            data.tracer.To = headPos2D
+            data.tracer.Visible = true
+        else
+            data.tracer.Visible = false
         end
         
-        player.CharacterAdded:Connect(function()
-            task.wait(0.5)
-        end)
+        if settings.espHealthBar then
+            local healthPercent = humanoid.Health / humanoid.MaxHealth
+            healthPercent = math.clamp(healthPercent, 0, 1)
+            
+            local barWidth = 3
+            local barHeight = boxHeight
+            local barX = boxX - barWidth - 3
+            local barY = boxY
+            
+            data.healthBarBg.Size = Vector2.new(barWidth, barHeight)
+            data.healthBarBg.Position = Vector2.new(barX, barY)
+            data.healthBarBg.Visible = true
+            
+            local fillHeight = barHeight * healthPercent
+            data.healthBarFill.Size = Vector2.new(barWidth, fillHeight)
+            data.healthBarFill.Position = Vector2.new(barX, barY + (barHeight - fillHeight))
+            
+            local corFinal
+            if healthPercent >= 0.5 then
+                local t = (1 - healthPercent) / 0.5
+                corFinal = Color3.fromRGB(math.floor(255 * t), 255, 0)
+            else
+                local t = (0.5 - healthPercent) / 0.5
+                corFinal = Color3.fromRGB(255, math.floor(255 * (1 - t)), 0)
+            end
+            
+            data.healthBarFill.Color = corFinal
+            data.healthBarFill.Visible = true
+        else
+            data.healthBarBg.Visible = false
+            data.healthBarFill.Visible = false
+        end
     end
     
-    -- Configura ESP para todos os jogadores existentes
+    local function setupESPForPlayer(player)
+        if player == LP then return end
+        if not EspData[player] then
+            createESPObjects(player)
+        end
+    end
+    
     for _, player in pairs(G.Players:GetPlayers()) do
         setupESPForPlayer(player)
     end
     
-    -- Conecta eventos para novos jogadores
-    G.Players.PlayerAdded:Connect(function(player)
+    addConnection(G.Players.PlayerAdded:Connect(function(player)
         setupESPForPlayer(player)
-    end)
+    end))
     
-    -- Limpa ESP quando um jogador sai
-    G.Players.PlayerRemoving:Connect(function(player)
+    addConnection(G.Players.PlayerRemoving:Connect(function(player)
         removeESPObjects(player)
-    end)
+    end))
     
-    -- Loop principal de atualização
-    RS.RenderStepped:Connect(function()
+    addConnection(RS.RenderStepped:Connect(function()
         if not keyValidada then return end
         
         for _, player in pairs(G.Players:GetPlayers()) do
             if player ~= LP then
-                if not espData[player] then
+                if not EspData[player] then
                     createESPObjects(player)
                 end
                 updateESP(player)
             end
         end
-    end)
+    end))
 end
 
 -- ============================================
