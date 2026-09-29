@@ -85,7 +85,8 @@ _G.SaadxCleanup = cleanup
 -- ============================================
 local KeysValidas = {
     ["SAADX-16MWCVXPI0SKK69X"] = "30/09/2026",
-    ["SAADX-HMN3NG5L7BWA2XBU"] = "30/09/2080",
+    ["SAADX-HMN3NG5L7BWA2XBU"] = "30/09/2026",
+    ["SAADX-RXE9QJWMIOQ5YQHR"] = "30/09/2090",
 }
 
 local keyValidada = false
