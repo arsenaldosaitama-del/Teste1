@@ -84,7 +84,7 @@ _G.SaadxCleanup = cleanup
 -- SISTEMA DE KEY
 -- ============================================
 local KeysValidas = {
-    ["SAADX-H419DE0EGHDZCV9N"] = "21/09/2026",
+    ["SAADX-16MWCVXPI0SKK69X"] = "30/09/2026",
     ["SAADX-HMN3NG5L7BWA2XBU"] = "30/09/2080",
 }
 
