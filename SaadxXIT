@@ -269,6 +269,7 @@ local settings = {
     espDistanceMax = 5000,
     fov = 140,
     autoFarmLixeiro = false,
+    whitelist = {}, -- [UserId] = true -> aimbot ignora
 }
 
 -- ============================================
@@ -842,6 +843,90 @@ function criarMenuCompleto()
     criarToggle(pvpContent, "Mostrar FOV", 24, "fovCircle")
     criarToggle(pvpContent, "Wall Check", 46, "wallCheck")
     createSlider(pvpContent, 74, "FOV Size", 10, 300, "fov", false, -5)
+
+    -- Whitelist (aimbot ignora quem estiver marcado)
+    local wlTitulo = Instance.new("TextLabel")
+    wlTitulo.Size = UDim2.new(1, 0, 0, 16)
+    wlTitulo.Position = UDim2.new(0, 0, 0, 108)
+    wlTitulo.BackgroundTransparency = 1
+    wlTitulo.Text = "Whitelist (aimbot não mira):"
+    wlTitulo.TextColor3 = Color3.fromRGB(255, 255, 255)
+    wlTitulo.TextSize = 10
+    wlTitulo.Font = Enum.Font.GothamBold
+    wlTitulo.TextXAlignment = Enum.TextXAlignment.Left
+    wlTitulo.Parent = pvpContent
+
+    local wlList = Instance.new("ScrollingFrame")
+    wlList.Size = UDim2.new(1, 0, 1, -128)
+    wlList.Position = UDim2.new(0, 0, 0, 126)
+    wlList.BackgroundTransparency = 1
+    wlList.BorderSizePixel = 0
+    wlList.ScrollBarThickness = 3
+    wlList.ScrollBarImageColor3 = Color3.fromRGB(200, 0, 0)
+    wlList.CanvasSize = UDim2.new(0, 0, 0, 0)
+    wlList.Parent = pvpContent
+
+    local wlButtons = {}
+
+    local function atualizarWhitelistUI()
+        for _, b in pairs(wlButtons) do
+            if b then b:Destroy() end
+        end
+        table.clear(wlButtons)
+
+        local y = 0
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                local b = Instance.new("TextButton")
+                b.Size = UDim2.new(1, -4, 0, 20)
+                b.Position = UDim2.new(0, 2, 0, y)
+                b.BorderSizePixel = 1
+                b.TextColor3 = Color3.fromRGB(255, 255, 255)
+                b.TextSize = 10
+                b.Font = Enum.Font.Gotham
+                b.TextXAlignment = Enum.TextXAlignment.Left
+                b.Parent = wlList
+
+                local function pintar()
+                    if settings.whitelist[player.UserId] then
+                        b.Text = "✅ " .. player.Name .. "  [WHITELIST]"
+                        b.BackgroundColor3 = Color3.fromRGB(0, 80, 0)
+                        b.BorderColor3 = Color3.fromRGB(0, 200, 0)
+                    else
+                        b.Text = "➕ " .. player.Name
+                        b.BackgroundColor3 = Color3.fromRGB(40, 0, 0)
+                        b.BorderColor3 = Color3.fromRGB(120, 0, 0)
+                    end
+                end
+                pintar()
+
+                addConnection(b.MouseButton1Click:Connect(function()
+                    if settings.whitelist[player.UserId] then
+                        settings.whitelist[player.UserId] = nil
+                    else
+                        settings.whitelist[player.UserId] = true
+                    end
+                    pintar()
+                end))
+
+                table.insert(wlButtons, b)
+                y = y + 22
+            end
+        end
+        wlList.CanvasSize = UDim2.new(0, 0, 0, y)
+    end
+
+    atualizarWhitelistUI()
+
+    addConnection(Players.PlayerAdded:Connect(function()
+        task.wait(0.5)
+        atualizarWhitelistUI()
+    end))
+
+    addConnection(Players.PlayerRemoving:Connect(function()
+        task.wait(0.1)
+        atualizarWhitelistUI()
+    end))
     
     -- ========== PLAYER CONTENT ==========
     criarToggle(playerContent, "ESP Box", 2, "espBox")
@@ -986,6 +1071,7 @@ function iniciarAimbot()
     
     local function isTargetValid(target)
         if not target or target == LP then return false end
+        if settings.whitelist[target.UserId] then return false end
         local char = target.Character
         if not char then return false end
         local hum = char:FindFirstChild("Humanoid")
@@ -1025,7 +1111,7 @@ function iniciarAimbot()
         local center = C.ViewportSize / 2
         
         for _, player in pairs(G.Players:GetPlayers()) do
-            if player ~= LP and player.Character then
+            if player ~= LP and not settings.whitelist[player.UserId] and player.Character then
                 local char = player.Character
                 local hum = char:FindFirstChild("Humanoid")
                 if hum and hum.Health > 0 then
