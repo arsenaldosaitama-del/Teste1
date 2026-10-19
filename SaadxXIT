@@ -1,9 +1,30 @@
+-- ============================================
+-- SAADX XIT | discord.gg/GSWQ3PzTHj
+-- ============================================
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local PathfindingService = game:GetService("PathfindingService")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
+
+-- ============================================
+-- 🛡️ ANTI LOG SERVICE E PROTEÇÕES
+-- ============================================
+pcall(function()
+    local LogService = game:GetService("LogService")
+    LogService.MessageOut = Instance.new("BindableEvent").Event
+end)
+
+-- Anti-Debug (Dex/Explorer)
+for _, gui in pairs(LocalPlayer.PlayerGui:GetChildren()) do
+    local nome = gui.Name:lower()
+    if nome:find("dex") or nome:find("explorer") or nome:find("hydroxide") then
+        LocalPlayer:Kick("❌ Debug detectado. Feche o Explorer/Dex.")
+        return
+    end
+end
 
 -- ============================================
 -- 🔌 VARIÁVEIS GLOBAIS
@@ -81,9 +102,9 @@ _G.SaadxCleanup = cleanup
 -- SISTEMA DE KEY
 -- ============================================
 local KeysValidas = {
-    ["SAADX-IHE5QZBP54PPXV0I"] = "18/10/2026",
-    ["SAADX-RXE9QJWMIOQ5YQHR"] = "18/09/2026",
-    ["SAADX-OGDHMHXU9MX1C1XN"] = "18/10/2026",
+    ["SAADX-IHE5QZBP54PPXV0I"] = "20/10/2026",
+    ["SAADX-RXE9QJWMIOQ5YQHR"] = "30/09/2090",
+    ["SAADX-OGDHMHXU9MX1C1XN"] = "20/10/2026",
 }
 
 local keyValidada = false
