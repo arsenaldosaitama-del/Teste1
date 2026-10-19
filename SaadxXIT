@@ -81,14 +81,9 @@ _G.SaadxCleanup = cleanup
 -- SISTEMA DE KEY
 -- ============================================
 local KeysValidas = {
-    ["SAADX-6W3UZIPHAR6ETDQY"] = "11/10/2026",
+    ["SAADX-IHE5QZBP54PPXV0I"] = "20/10/2026",
     ["SAADX-RXE9QJWMIOQ5YQHR"] = "30/09/2090",
-    ["SAADX-WPJNQ6Q8UTTRUYD8"] = "14/10/2026",
-    ["SAADX-2MHUPDMWG0VCH81Z"] = "16/10/2026",
-    ["SAADX-3YFZQKPGYEP7B34I"] = "12/10/2026",
-    ["SAADX-ME98KRRTAKU0D89U"] = "12/10/2026",
-    ["SAADX-COD5W1X2MFU7O25K"] = "13/10/2026",
-    ["SAADX-DIZNPO5765JGK5V2"] = "14/10/2026",
+    ["SAADX-OGDHMHXU9MX1C1XN"] = "20/10/2026",
 }
 
 local keyValidada = false
